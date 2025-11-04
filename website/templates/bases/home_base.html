@@ -1,0 +1,54 @@
+<!-- Designs the UI Elements that apply only to webpages accessible from the home screen -->
+
+{% extends "bases/website_base.html" %}
+<!-- The above line causes this page to re-use all code in website_base.html without re-writing -->
+
+<!-- Sets up the UI elements of the navigation bar -->
+{% block body %}
+<nav class="navbar navbar-expand-lg custom-navbar">
+    <button
+            class="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbar"
+    >
+<!-- Hyperlinks the navigation bar buttons to the corresponding webpages -->
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbar">
+        <div class="navbar-nav">
+            <a class="nav-item nav-link" id="index" href="/">Home</a>
+            <a class="nav-item nav-link" id="register" href="/register">Create Account</a>
+            <a class="nav-item nav-link" id="login" href="/login">Login</a>
+            <a class="nav-item nav-link" id="logout" href="/logout">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Sets up GUI styling for messages that are flashed to screen  -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+    {% if category == 'Error' %}
+    <div class="alert alert-danger alert-dismissable fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% else %}
+    <div class="alert alert-success alert-dismissable fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+    {% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}

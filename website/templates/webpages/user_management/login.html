@@ -1,0 +1,47 @@
+{% extends "bases/home_base.html" %}
+<!-- The above line causes this page to re-use all code in home_base.html without re-writing -->
+<!-- This page utilises a CSS framework called bootstrap for the GUI -->
+<!-- Bootstrap designs have been imported with the links in website_base.html -->
+
+{% block title %}Login{% endblock %}
+{% block content %}
+
+<div class="container mt-4">
+  <h1 class="mb-4"><strong>Login</strong></h1>
+</div>
+<!-- The above line creates a large heading for the login page -->
+
+<!-- Builds the GUI for the input form in HTML -->
+<form method = "POST">
+<!-- The above line allows the webpage to send an HTTP POST Request to the server with the inputted data -->
+    <div class = "form-group">
+        <label for = "email" > Email Address: </label>
+        <input
+          type = "email"
+          class = "form-control"
+          id = "email"
+          name = "email"
+          placeholder = "Enter Your Email Address (Required)"
+        />
+    </div>
+    <div class = "form-group">
+        <label for = "password" > Password: </label>
+        <input
+          type = "password"
+          class = "form-control"
+          id = "password"
+          name = "password"
+          placeholder = "Enter Your Password (Required)"
+        />
+    </div>
+    <br />
+    <button type = "submit" class = "btn btn-primary">Login</button>
+    <br />
+</form>
+
+<!-- Creates empty space below button -->
+<div class="container mt-4">
+  <h1 class="mb-4"><strong> </strong></h1>
+</div>
+
+{% endblock %}

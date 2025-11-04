@@ -1,0 +1,54 @@
+{% extends "bases/home_base.html" %}
+<!-- The above line causes this page to re-use all code in home_base.html without re-writing -->
+
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<div class="container mt-4">
+  <h1 class="mb-4"><strong>Book Men’s Hair and Beard Services</strong></h1>
+<!-- The above line creates a large heading for the home page -->
+
+  <div class="row">
+    <!-- Left column: Service categories -->
+    <div class="col-md-4">
+      <div class="border border-success p-3 mb-3">
+        <ul>
+          <li>Haircuts</li>
+          <li>Hair Wash and Dry</li>
+          <li>Hair Colour</li>
+          <li>Beard Styling</li>
+          <li>Beard Wash and Dry</li>
+          <li>Beard Miscellaneous</li>
+        </ul>
+        <p>Create an account and log in to book an appointment.</p>
+      </div>
+    </div>
+
+    <!-- Middle column: Opening hours -->
+    <div class="col-md-4">
+      <div class="border border-success p-3 mb-3">
+        <h5><u>Opening Hours</u></h5>
+        <p>Monday: <span class="text-danger">Closed</span></p>
+        <p>Tuesday: <span class="text-success">10am – 6pm</span></p>
+        <p>Wednesday: <span class="text-success">10am – 6pm</span></p>
+        <p>Thursday: <span class="text-success">10am – 6pm</span></p>
+        <p>Friday: <span class="text-success">10am – 6pm</span></p>
+        <p>Saturday: <span class="text-success">10am – 6pm</span></p>
+        <p>Sunday: <span class="text-danger">Closed</span></p>
+      </div>
+    </div>
+
+    <!-- Right column: Address and contact -->
+    <div class="col-md-4">
+      <div class="border border-success p-3 mb-3">
+        <h5><u>Address</u></h5>
+        <p>72 Hartington Rd,<br>Leicester,<br>LE2 0GN</p>
+
+        <h5><u>Phone</u></h5>
+        <p>07773 326497</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
