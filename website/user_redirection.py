@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash
+from flask import Blueprint, render_template, request, flash, redirect
 # 'Blueprint' library allows...
 # 'render_template' library allows...
 # 'request' library allows...
@@ -98,6 +98,7 @@ def register():
 
         else:
             flash("Account Successfully Created.", category = "Success")
+            return redirect("/login")
 
     return render_template("webpages/user_management/register.html")
 
