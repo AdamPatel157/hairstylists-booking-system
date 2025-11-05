@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, flash, redirect
-# 'Blueprint' library allows...
-# 'render_template' library allows...
-# 'request' library allows...
-# 'flash' library allows for the system to display temporary messages to the user's screen
+# 'Blueprint' library allows different sections of a Flask application to be organised into separate modules.
+# 'render_template' library allows HTML templates to be displayed dynamically through Python code.
+# 'request' library allows data to be accessed from incoming HTTP requests, such as form submissions.
+# 'flash' library allows for the system to display temporary feedback messages to the user's screen.
+# 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
 
 user_redirection = Blueprint("auth", __name__)
 
@@ -98,7 +99,7 @@ def login():
 
 @user_redirection.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "POST": # Evaluates the below block if receiving data from the register webpage
+    if request.method == "POST": # Evaluates the below block if receiving a POST request from the register.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
         firstName = request.form.get("firstName").strip()
         middleName = request.form.get("middleName").strip()
