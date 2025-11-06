@@ -9,6 +9,7 @@ from sqlalchemy.sql import func
 # Sets up SQL tables through classes
 
 class tblCustomer(db.Model, UserMixin):
+    __tablename__ = "tblCustomer"
     CustomerID = db.Column(db.Integer, primary_key=True, nullable=False)
     FirstName = db.Column(db.String(50), nullable=False)
     MiddleName = db.Column(db.String(50), nullable=True)
@@ -19,6 +20,7 @@ class tblCustomer(db.Model, UserMixin):
     PhoneNumber = db.Column(db.String(11), unique=True, nullable=True)
 
 class tblBarber(db.Model, UserMixin):
+    __tablename__ = "tblBarber"
     BarberID = db.Column(db.Integer, primary_key=True, nullable=False)
     FirstName = db.Column(db.String(50), nullable=False)
     MiddleName = db.Column(db.String(50), nullable=True)
@@ -29,22 +31,25 @@ class tblBarber(db.Model, UserMixin):
     YearsOfExperience = db.Column(db.Integer, nullable=False)
 
 class tblTimeSlot(db.Model):
+    __tablename__ = "tblTimeSlot"
     SlotID = db.Column(db.Integer, primary_key=True, nullable=False)
     Day = db.Column(db.String(10), nullable=False)
     StartTime = db.Column(db.Time, nullable=False)
     EndTime = db.Column(db.Time, nullable=False)
-    WeekCommencing = db.Column(db.Date, nullable=False)
+    WeekCommencing = db.Column(db.DateTime, nullable=False)
     IsAvailable = db.Column(db.Boolean, default=True, nullable=False)
     BarberID = db.Column(db.Integer, db.ForeignKey('tblBarber.BarberID'), nullable=False)
 
 class tblAppointment(db.Model):
+    __tablename__ = "tblAppointment"
     BookingReference = db.Column(db.Integer, primary_key=True, nullable=False)
-    Date = db.Column(db.Date, nullable=False)
+    Date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)
     NoteForBarber = db.Column(db.String(10000), nullable=True)
     BarberID = db.Column(db.Integer, db.ForeignKey('tblBarber.BarberID'), nullable=False)
     CustomerID = db.Column(db.Integer, db.ForeignKey('tblCustomer.CustomerID'), nullable=False)
 
 class tblService(db.Model):
+    __tablename__ = "tblService"
     ServiceID = db.Column(db.Integer, primary_key=True, nullable=False)
     ServiceName = db.Column(db.String(50), nullable=False)
     Duration = db.Column(db.Integer, nullable=False)
@@ -52,9 +57,11 @@ class tblService(db.Model):
     ServiceCategory = db.Column(db.String(50), nullable=False)
 
 class tblAppointmentSlots(db.Model):
-    SlotID = db.Column(db.Integer, foreign_key='tblTimeSlot.SlotID', primary_key=True, nullable=False)
-    BookingReference = db.Column(db.Integer, foreign_key='tblAppointment.BookingReference', primary_key=True, nullable=False)
+    __tablename__ = "tblAppointmentSlots"
+    SlotID = db.Column(db.Integer, db.ForeignKey('tblTimeSlot.SlotID'), primary_key=True, nullable=False)
+    BookingReference = db.Column(db.Integer, db.ForeignKey('tblAppointment.BookingReference'), primary_key=True, nullable=False)
 
 class tblAppointmentServices(db.Model):
-    ServiceID = db.Column(db.Integer, foreign_key='tblService.ServiceID', primary_key=True, nullable=False)
-    BookingReference = db.Column(db.Integer, foreign_key='tblAppointment.BookingReference', primary_key=True, nullable=False)
+    __tablename__ = "tblAppointmentServices"
+    ServiceID = db.Column(db.Integer, db.ForeignKey('tblService.ServiceID'), primary_key=True, nullable=False)
+    BookingReference = db.Column(db.Integer, db.ForeignKey('tblAppointment.BookingReference'), primary_key=True, nullable=False)
