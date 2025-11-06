@@ -81,6 +81,7 @@ def hash_password(getPassword):
 
 # Main Program Starts Here
 
-getString = input("Enter your password: ")
-result = hash_password(getString)
-print(result)
+if __name__ == "__main__":
+    getString = input("Enter your password: ")
+    result = hash_password(getString)
+    print(result)

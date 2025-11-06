@@ -5,6 +5,14 @@ from flask import Blueprint, render_template, request, flash, redirect
 # 'flash' library allows for the system to display temporary feedback messages to the user's screen.
 # 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
 
+from .models import tblCustomer, tblBarber
+# Allows the system to add new records to tblCustomer by accessing its class in models.py
+
+from . import db
+
+from algorithms.hash_password import hash_password
+# Imports the SHA-256 hashing algorithm for passwords from the hash_password file
+
 user_redirection = Blueprint("auth", __name__)
 
 # Registration Validation Functions
@@ -93,8 +101,29 @@ def validatePassword(createPassword, confirmPassword):
 
 @user_redirection.route("/login", methods=["GET", "POST"])
 def login():
-    data = request.form # Accesses the form attribute data from the incoming POST Request
-    print(data)
+    if request.method == "POST": # Evaluates the below block if receiving a POST request from the login.html webpage
+        # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
+        email = request.form.get("email").strip()
+        password = request.form.get("password")
+
+        customer = tblCustomer.query.filter_by(EmailAddress=email).first()
+        barber = tblBarber.query.filter_by(EmailAddress=email).first()
+
+        if customer:
+            if customer.HashedPassword == hash_password(password):
+                flash("You have successfully logged in and been taken to the customer dashboard", category="Success")
+                return redirect("/") # Link to customer dashboard
+            else:
+                flash("Incorrect Password. Please try again.", category="Error")
+        elif barber:
+            if barber.HashedPassword == hash_password(password):
+                flash("You have successfully logged in and been taken to the barber dashboard", category="Success")
+                return redirect("/") # Link to barber dashboard
+            else:
+                flash("Incorrect Password. Please try again.", category="Error")
+        else:
+            flash("Incorrect Email Address. Please try again, or create an account with that email.", category="Error")
+
     return render_template("webpages/user_management/login.html")
 
 @user_redirection.route("/register", methods=["GET", "POST"])
@@ -120,6 +149,11 @@ def register():
 
         # If all validation check procedures are true, proceeds
         if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
+            hashedPassword = hash_password(password1)
+            # noinspection PyArgumentList
+            newCustomer = tblCustomer(FirstName=firstName, MiddleName=middleName, LastName = lastName, EmailAddress=email, HashedPassword=hashedPassword, IsBlackListed=False, PhoneNumber=phoneNumber)
+            db.session.add(newCustomer) # Adds the user's data to tblCustomer
+            db.session.commit()
             flash("Account Successfully Created.", category = "Success")
             return redirect("/login")
 

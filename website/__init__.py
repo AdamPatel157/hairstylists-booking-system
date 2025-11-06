@@ -28,6 +28,7 @@ def create_app():
     app.register_blueprint(views, url_prefix="/")
     app.register_blueprint(user_redirection, url_prefix="/")
 
+    # noinspection PyUnresolvedReferences
     from .models import tblCustomer, tblBarber, tblAppointment, tblService, tblTimeSlot, tblAppointmentSlots, tblAppointmentServices
 
     create_database(app)
