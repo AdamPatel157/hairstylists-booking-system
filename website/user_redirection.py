@@ -13,6 +13,8 @@ from . import db
 from algorithms.hash_password import hash_password
 # Imports the SHA-256 hashing algorithm for passwords from the hash_password file
 
+from flask_login import login_user, logout_user, login_required
+
 user_redirection = Blueprint("auth", __name__)
 
 # Registration Validation Functions
@@ -112,12 +114,14 @@ def login():
         if customer:
             if customer.HashedPassword == hash_password(password):
                 flash("You have successfully logged in and been taken to the customer dashboard", category="Success")
-                return redirect("/") # Link to customer dashboard
+                login_user(customer, remember=True)
+                return redirect("/customer_dashboard")
             else:
                 flash("Incorrect Password. Please try again.", category="Error")
         elif barber:
             if barber.HashedPassword == hash_password(password):
                 flash("You have successfully logged in and been taken to the barber dashboard", category="Success")
+                login_user(barber, remember=True)
                 return redirect("/") # Link to barber dashboard
             else:
                 flash("Incorrect Password. Please try again.", category="Error")
@@ -137,6 +141,12 @@ def register():
         phoneNumber = request.form.get("phoneNumber").strip()
         password1 = request.form.get("password1")
         password2 = request.form.get("password2")
+
+        # Ensures that no account already exists with the same email address
+        customer = tblCustomer.query.filter_by(EmailAddress=email).first()
+        if customer:
+            flash("An account has already been created with this email address. Please login, or try again.", category="Error")
+            return redirect("/register")
 
         # Passes form inputs into registration validation procedures
         # The procedures return True if passes validation and False if it fails
@@ -160,6 +170,8 @@ def register():
     return render_template("webpages/user_management/register.html")
 
 @user_redirection.route("/logout")
+@login_required # Only allows user to access this route if they are logged in
 def logout():
+    logout_user()
     flash("You have logged out and been returned to the home page.", category="Success")
     return redirect("/")

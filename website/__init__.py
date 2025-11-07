@@ -3,10 +3,12 @@ from flask import Flask
 
 import os
 
+# Imports the flask SQL toolkit that provides access for relational databases
 from flask_sqlalchemy import SQLAlchemy
 from flask_sqlalchemy.track_modifications import models_committed
 
-# Imports the flask SQL toolkit that provides access for relational databases
+from flask_login import LoginManager
+
 
 db = SQLAlchemy()
 dbName = "database.db"
@@ -32,6 +34,14 @@ def create_app():
     from .models import tblCustomer, tblBarber, tblAppointment, tblService, tblTimeSlot, tblAppointmentSlots, tblAppointmentServices
 
     create_database(app)
+
+    loginManager = LoginManager()
+    loginManager.login_view = "auth.login"
+    loginManager.init_app(app)
+
+    @loginManager.user_loader
+    def load_user(id):
+        return tblCustomer.query.get(int(id))
 
     return app
 
