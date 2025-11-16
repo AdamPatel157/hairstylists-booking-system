@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, flash, redirect
+from flask import Blueprint, render_template, request, flash, redirect, session
 # 'Blueprint' library allows different sections of a Flask application to be organised into separate modules.
 # 'render_template' library allows HTML templates to be displayed dynamically through Python code.
 # 'request' library allows data to be accessed from incoming HTTP requests, such as form submissions.
 # 'flash' library allows for the system to display temporary feedback messages to the user's screen.
 # 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
+# 'session' library allows data to be stored temporarily in cookies.
 
 from .models import tblCustomer, tblBarber
 # Allows the system to add new records to tblCustomer by accessing its class in models.py
@@ -11,6 +12,9 @@ from .models import tblCustomer, tblBarber
 from . import db
 
 from algorithms.hash_password import hash_password
+
+from algorithms.verify_email_otp import generate_otp, send_verification_email
+
 # Imports the SHA-256 hashing algorithm for passwords from the hash_password file
 
 from flask_login import login_user, logout_user, login_required
@@ -148,6 +152,13 @@ def register():
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
             return redirect("/register")
 
+        # Ensures that no account already exists with the same phone number
+        customerWithPhone = tblCustomer.query.filter_by(PhoneNumber=phoneNumber).first()
+        if customerWithPhone:
+            flash(
+                "An account has already been created with this phone number. Please try again with a different number." ,category="Error")
+            return redirect("/register")
+
         # Passes form inputs into registration validation procedures
         # The procedures return True if passes validation and False if it fails
         firstNameIsValidated = validateName(firstName, "First")
@@ -159,13 +170,16 @@ def register():
 
         # If all validation check procedures are true, proceeds
         if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
-            hashedPassword = hash_password(password1)
-            # noinspection PyArgumentList
-            newCustomer = tblCustomer(FirstName=firstName, MiddleName=middleName, LastName = lastName, EmailAddress=email, HashedPassword=hashedPassword, IsBlackListed=False, PhoneNumber=phoneNumber)
-            db.session.add(newCustomer) # Adds the user's data to tblCustomer
-            db.session.commit()
-            flash("Account Successfully Created.", category = "Success")
-            return redirect("/login")
+            session["pendingRegistration"] = {
+                "firstName": firstName,
+                "middleName": middleName,
+                "lastName": lastName,
+                "email": email,
+                "phoneNumber": phoneNumber,
+                "userPassword": password1
+            }
+        # Stores all user inputs in a cookie to be used on the verify.html webpage
+            return redirect("/verify_email")
 
     return render_template("webpages/user_management/register.html")
 
@@ -175,3 +189,61 @@ def logout():
     logout_user()
     flash("You have logged out and been returned to the home page.", category="Success")
     return redirect("/")
+
+@user_redirection.route("/verify_email", methods=["GET", "POST"])
+def verify_email():
+    # Checks if there is a pending registration in the cookie
+    if "pendingRegistration" not in session:
+        flash("There is no pending registration. Please register or login.", category="Error")
+        return redirect("/register")
+
+    # Retrieves pending registration data from the cookie
+    registrationData = session["pendingRegistration"]
+    email = registrationData["email"]
+
+    # Generates a random 6 digit code to send to the user as a verification email
+    if "verificationCode" not in session:
+        session["verificationCode"] = generate_otp() # Generates OTP code
+
+    verificationCode = session["verificationCode"]
+
+    # Email Configuration
+    sendingEmail = "157adampatel@gmail.com"
+    receivingEmail = email
+    password = "cmfv nffy fscy usmu"  # Google App Password created for email account
+
+    if request.method == "POST": # Evaluates the below block if receiving a POST request from the verify.html webpage
+        # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
+        getVerificationCode = request.form.get("otpCode").strip()
+        if getVerificationCode == verificationCode:
+            hashedPassword = hash_password(registrationData["userPassword"])
+            # noinspection PyArgumentList
+            newCustomer = tblCustomer(
+                FirstName = registrationData["firstName"],
+                MiddleName = registrationData["middleName"],
+                LastName = registrationData["lastName"],
+                EmailAddress = registrationData["email"],
+                HashedPassword = hashedPassword,
+                IsBlackListed = False,
+                PhoneNumber = registrationData["phoneNumber"]
+            )
+            db.session.add(newCustomer)  # Adds the user's data to tblCustomer
+            db.session.commit()
+
+            # Clears the pending registration cookie
+            session.pop("pendingRegistration", None)
+            session.pop("verificationCode", None)
+
+            flash("Your email has been verified.", category="Success")
+            flash("Account Successfully Created.", category="Success")
+            return redirect("/login")
+        else:
+            flash("Incorrect Verification Code. Please try again or return to 'Create Account'.", category="Error")
+
+    elif request.method == "GET":
+        # If receiving a GET request (first time visiting the verify.html page)
+        send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+        return render_template("webpages/user_management/verify.html")
+
+    send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+    return render_template("webpages/user_management/verify.html")

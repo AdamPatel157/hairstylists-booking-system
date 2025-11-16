@@ -1,1 +1,74 @@
-{% extends "bases/website_base.html" %} {% block title %}Login{% endblock %}
+{% extends "bases/website_base.html" %}
+<!-- The above line causes this page to re-use all code in website_base.html without re-writing -->
+<!-- This page utilises a CSS framework called bootstrap for the GUI -->
+<!-- Bootstrap designs have been imported with the links in website_base.html -->
+
+{% block title %}Verify{% endblock %}
+{% block content %}
+
+{% block body %}
+<nav class="navbar navbar-expand-lg custom-navbar">
+    <button
+            class="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbar"
+    >
+<!-- Hyperlinks the navigation bar buttons to the corresponding webpages -->
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbar">
+        <div class="navbar-nav">
+            <a class="nav-item nav-link" id="register" href="/register">Wrong Email? Return to Create Account</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Sets up GUI styling for messages that are flashed to screen  -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+    {% for category, message in messages %}
+    {% if category == 'Error' %}
+    <div class="alert alert-danger alert-dismissable fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% else %}
+    <div class="alert alert-success alert-dismissable fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endif %}
+    {% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="container mt-4">
+  <h1 class="mb-4"><strong>Verify Email Address</strong></h1>
+<!-- The above line creates a large heading for the verification page -->
+
+<!-- Builds the GUI for the input form in HTML -->
+<form method = "POST">
+<!-- The above line allows the webpage to send an HTTP POST Request to the server with the inputted data -->
+    <div class = "form-group">
+        <label for = "otpCode" > Verification Code: </label>
+        <input
+          type = "text"
+          class = "form-control"
+          id = "otpCode"
+          name = "otpCode"
+          placeholder = "Enter verification code"
+        />
+    </div>
+        <br />
+    <button type = "submit" class = "btn btn-primary">Submit</button>
+    <br />
+</form>
+</div>
+
+{% endblock %}
+{% endblock %}
