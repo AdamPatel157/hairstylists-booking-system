@@ -1,9 +1,6 @@
 import random
 # Allows random number generation functions
 
-from flask import flash
-# Allows messages to be flashed to the user
-
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -16,8 +13,7 @@ def generate_otp() -> str:
         otpCode = otpCode + str(random.randint(0, 9))
     return otpCode
 
-
-def send_verification_email(senderEmail: str, receiverEmail: str, emailPassword: str, otpCode: str) -> None:
+def send_verification_email(senderEmail: str, receiverEmail: str, emailPassword: str, otpCode: str):
     # Sends a verification email containing the OTP code using Gmail's SMTP server
     # Email Content
     subject = "Your Email Verification Code"
@@ -43,10 +39,13 @@ def send_verification_email(senderEmail: str, receiverEmail: str, emailPassword:
 
             # Send the message
             server.send_message(message)
-            flash("A verification email has been sent to your inbox. Enter the received code below.", category = "Success")
+            print("Verification email sent successfully")
+            return True
+
     except smtplib.SMTPException:
         # Handles errors without crashing the program if there is an issue
-        flash("Something went wrong in sending a verification email. Please try again.", category = "Error")
+        print("Email failed to send.")
+        return False
 
 if __name__ == "__main__":
     # Generates a random 6 digit code to send to the user as a verification email

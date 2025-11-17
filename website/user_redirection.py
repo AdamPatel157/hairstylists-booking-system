@@ -13,7 +13,7 @@ from . import db
 
 from algorithms.hash_password import hash_password
 
-from algorithms.verify_email_otp import generate_otp, send_verification_email
+from algorithms.email_otp import generate_otp, send_verification_email
 
 # Imports the SHA-256 hashing algorithm for passwords from the hash_password file
 
@@ -242,8 +242,116 @@ def verify_email():
 
     elif request.method == "GET":
         # If receiving a GET request (first time visiting the verify.html page)
-        send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
-        return render_template("webpages/user_management/verify.html")
+        emailSent = send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+        if not emailSent:
+            flash("Something went wrong in sending a verification email. Please try again.", category="Error")
+            # Clear the session and redirect back to registration
+            session.pop("pendingRegistration", None)
+            session.pop("verificationCode", None)
+            return redirect("/register")
+        else:
+            flash("A verification code has been sent to your email inbox (if it exists). Please also check your junk folder.", category="Success")
+    return render_template("webpages/user_management/verify.html", is_password_reset=False)
 
-    send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
-    return render_template("webpages/user_management/verify.html")
+@user_redirection.route("/forgot-password", methods = ["POST"])
+def forgot_password():
+    # Handles password reset request from login page
+    email = request.form.get("forgot_email").strip()
+
+    # Check if email exists in either customer or barber table
+    customer = tblCustomer.query.filter_by(EmailAddress = email).first()
+    barber = tblBarber.query.filter_by(EmailAddress = email).first()
+
+    if customer or barber:
+        # Generate OTP code from email_otp.py
+        otpCode = generate_otp()
+
+        # Store in session for verification
+        session["passwordResetOTP"] = otpCode
+        session["passwordResetEmail"] = email
+        session["isPasswordReset"] = True
+
+        # Send verification email from email_otp.py
+        senderEmail = "157adampatel@gmail.com"
+        emailPassword = "cmfv nffy fscy usmu"
+
+        success = send_verification_email(
+            senderEmail,
+            email,
+            emailPassword,
+            otpCode
+        )
+
+        if success:
+            flash("Password reset code sent to your email!", category = "Success")
+            # Redirect to verify page
+            return redirect("/verify_password_reset")
+        else:
+            flash("Failed to send email. Please try again.", category = "Error")
+            return redirect("/login")
+    else:
+        flash("No account exists with that email. Enter a different email or Create an Account.", category = "Error")
+        return redirect("/login")
+
+@user_redirection.route("/verify_password_reset", methods=["GET", "POST"])
+def verify_password_reset():
+    # Handles OTP verification for password reset
+    # Checks if user has a pending password reset
+    if "isPasswordReset" not in session or "passwordResetOTP" not in session:
+        flash("Please request a password reset first.", category="Error")
+        return redirect("/login")
+
+    if request.method == "POST":
+        getOtp = request.form.get("otpCode").strip()
+        storedOtp = session["passwordResetOTP"]
+
+        if getOtp == storedOtp:
+            session.pop("passwordResetOTP", None)
+            flash("Email verified. Please set your new password.", category="Success")
+            return redirect("/set_new_password")
+        else:
+            flash("Incorrect verification code. Please try again.", category="Error")
+
+    # Render the verify.html webpage with password reset content
+    return render_template(
+        "webpages/user_management/verify.html",
+        is_password_reset = True
+    )
+
+@user_redirection.route("/set_new_password", methods = ["GET", "POST"])
+def set_new_password():
+    # Handles setting new password after OTP verification
+    # Check if user completed OTP verification
+    if "passwordResetEmail" not in session or "isPasswordReset" not in session:
+        flash("Please complete the password reset process from the beginning.", category="Error")
+        return redirect("/login")
+
+    if request.method == "POST":
+        newPassword = request.form.get("new_password")
+        confirmPassword = request.form.get("confirm_password")
+
+        # Validate passwords using existing validation function - REUSING validatePassword()
+        if validatePassword(newPassword, confirmPassword):
+            # Hashes the new password using hash_password() from hash_password.py
+            hashedPassword = hash_password(newPassword)
+
+            # Update password in database
+            email = session["passwordResetEmail"]
+            customer = tblCustomer.query.filter_by(EmailAddress = email).first()
+            barber = tblBarber.query.filter_by(EmailAddress = email).first()
+
+            if customer:
+                customer.HashedPassword = hashedPassword
+                db.session.commit()
+            elif barber:
+                barber.HashedPassword = hashedPassword
+                db.session.commit()
+
+            # Clears all session data from the cookie
+            session.pop("passwordResetEmail", None)
+            session.pop("isPasswordReset", None)
+
+            flash("Password reset successful! Please login with your new password.", category = "Success")
+            return redirect("/login")
+
+    return render_template("webpages/user_management/forgot_password.html")
