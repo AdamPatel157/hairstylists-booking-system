@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, flash, redirect, session
 # 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
 # 'session' library allows data to be stored temporarily in cookies.
 
-from .models import tblCustomer, tblBarber
+from .models import tblCustomer, tblBarber, tblUnverified
 # Allows the system to add new records to tblCustomer by accessing its class in models.py
 
 from . import db
@@ -19,6 +19,8 @@ from algorithms.email_otp import generate_otp, send_verification_email
 
 from flask_login import login_user, logout_user, login_required
 
+from algorithms.time_limits import cleanup_expired_unverified
+
 user_redirection = Blueprint("auth", __name__)
 
 # Registration Validation Functions
@@ -28,7 +30,7 @@ user_redirection = Blueprint("auth", __name__)
 
 def validateName(name, namePos):
     lowercaseEnglishAlphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-    if len(name) < 2:
+    if (len(name) < 2) and (namePos != "Middle"): # Allows empty middle name fields
         flash(f"{namePos} Name must be greater than 1 character long.", category="Error")
         return False
     elif any(character.lower() not in lowercaseEnglishAlphabet for character in name):
@@ -52,7 +54,8 @@ def validateEmail(emailAddress):
 
 def validatePhoneNumber(phoneNum):
     numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-
+    if phoneNum == "": # Allows empty phone number fields as it is optional
+        return True
     if len(phoneNum) != 11:
         flash("Phone Numbers must be exactly 11 characters long.", category="Error")
         return False
@@ -136,6 +139,9 @@ def login():
 
 @user_redirection.route("/register", methods=["GET", "POST"])
 def register():
+    # Cleans up expired unverified records
+    cleanup_expired_unverified(db, tblUnverified)
+
     if request.method == "POST": # Evaluates the below block if receiving a POST request from the register.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
         firstName = request.form.get("firstName").strip()
@@ -147,16 +153,15 @@ def register():
         password2 = request.form.get("password2")
 
         # Ensures that no account already exists with the same email address
-        customer = tblCustomer.query.filter_by(EmailAddress=email).first()
+        customer = tblCustomer.query.filter_by(EmailAddress = email).first()
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
             return redirect("/register")
 
-        # Ensures that no account already exists with the same phone number
-        customerWithPhone = tblCustomer.query.filter_by(PhoneNumber=phoneNumber).first()
-        if customerWithPhone:
-            flash(
-                "An account has already been created with this phone number. Please try again with a different number." ,category="Error")
+        # Ensures that no account already exists with the same phone number, but allows empty fields
+        customerWithPhone = tblCustomer.query.filter_by(PhoneNumber = phoneNumber).first()
+        if customerWithPhone and customerWithPhone != "":
+            flash("An account has already been created with this phone number. Please try again with a different number." ,category="Error")
             return redirect("/register")
 
         # Passes form inputs into registration validation procedures
@@ -168,17 +173,31 @@ def register():
         phoneNumberIsValidated = validatePhoneNumber(phoneNumber)
         passwordIsValidated = validatePassword(password1, password2)
 
-        # If all validation check procedures are true, proceeds
+        # If all validation check procedures are true, stores inputs in tblUnverified in database
         if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
-            session["pendingRegistration"] = {
-                "firstName": firstName,
-                "middleName": middleName,
-                "lastName": lastName,
-                "email": email,
-                "phoneNumber": phoneNumber,
-                "userPassword": password1
-            }
-        # Stores all user inputs in a cookie to be used on the verify.html webpage
+            # Hashes password before storing
+            hashedPassword = hash_password(password1)
+
+            # Creates unverified record in database
+            verificationCode = generate_otp()
+
+            # noinspection PyArgumentList
+            newUnverified = tblUnverified(
+                FirstName=firstName,
+                MiddleName=middleName,
+                LastName=lastName,
+                EmailAddress=email,
+                HashedPassword=hashedPassword,
+                PhoneNumber=phoneNumber,
+                VerificationCode=verificationCode,
+                IsPasswordReset=False
+            )
+            db.session.add(newUnverified)
+            db.session.commit()
+
+            # Stores only the unverified ID in cookie so that database records from that ID can be retrieved
+            session["unverifiedID"] = newUnverified.UnverifiedID
+
             return redirect("/verify_email")
 
     return render_template("webpages/user_management/register.html")
@@ -190,49 +209,53 @@ def logout():
     flash("You have logged out and been returned to the home page.", category="Success")
     return redirect("/")
 
+
 @user_redirection.route("/verify_email", methods=["GET", "POST"])
 def verify_email():
-    # Checks if there is a pending registration in the cookie
-    if "pendingRegistration" not in session:
+    # Checks if there is a pending registration
+    if "unverifiedID" not in session:
         flash("There is no pending registration. Please register or login.", category="Error")
         return redirect("/register")
 
-    # Retrieves pending registration data from the cookie
-    registrationData = session["pendingRegistration"]
-    email = registrationData["email"]
+    # Retrieves unverified user ID record from database
+    unverifiedID = session["unverifiedID"]
+    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=False).first()
 
-    # Generates a random 6 digit code to send to the user as a verification email
-    if "verificationCode" not in session:
-        session["verificationCode"] = generate_otp() # Generates OTP code
+    if not unverifiedRecord:
+        flash("Registration session expired. Please try again.", category="Error")
+        session.pop("unverifiedID", None)
+        return redirect("/register")
 
-    verificationCode = session["verificationCode"]
+    email = unverifiedRecord.EmailAddress
+    verificationCode = unverifiedRecord.VerificationCode
 
     # Email Configuration
     sendingEmail = "157adampatel@gmail.com"
     receivingEmail = email
-    password = "cmfv nffy fscy usmu"  # Google App Password created for email account
+    password = "cmfv nffy fscy usmu"
 
-    if request.method == "POST": # Evaluates the below block if receiving a POST request from the verify.html webpage
-        # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
+    if request.method == "POST":
         getVerificationCode = request.form.get("otpCode").strip()
+
         if getVerificationCode == verificationCode:
-            hashedPassword = hash_password(registrationData["userPassword"])
             # noinspection PyArgumentList
             newCustomer = tblCustomer(
-                FirstName = registrationData["firstName"],
-                MiddleName = registrationData["middleName"],
-                LastName = registrationData["lastName"],
-                EmailAddress = registrationData["email"],
-                HashedPassword = hashedPassword,
-                IsBlackListed = False,
-                PhoneNumber = registrationData["phoneNumber"]
+                FirstName=unverifiedRecord.FirstName,
+                MiddleName=unverifiedRecord.MiddleName,
+                LastName=unverifiedRecord.LastName,
+                EmailAddress=unverifiedRecord.EmailAddress,
+                HashedPassword=unverifiedRecord.HashedPassword,
+                IsBlackListed=False,
+                PhoneNumber=unverifiedRecord.PhoneNumber
             )
-            db.session.add(newCustomer)  # Adds the user's data to tblCustomer
+            db.session.add(newCustomer)
+
+            # Deletes unverified record
+            db.session.delete(unverifiedRecord)
             db.session.commit()
 
-            # Clears the pending registration cookie
-            session.pop("pendingRegistration", None)
-            session.pop("verificationCode", None)
+            # Clears temporary cookie data once records are moved to tblCustomer
+            session.pop("unverifiedID", None)
 
             flash("Your email has been verified.", category="Success")
             flash("Account Successfully Created.", category="Success")
@@ -241,19 +264,24 @@ def verify_email():
             flash("Incorrect Verification Code. Please try again or return to 'Create Account'.", category="Error")
 
     elif request.method == "GET":
-        # If receiving a GET request (first time visiting the verify.html page)
-        emailSent = send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
-        if not emailSent:
-            flash("Something went wrong in sending a verification email. Please try again.", category="Error")
-            # Clear the session and redirect back to registration
-            session.pop("pendingRegistration", None)
-            session.pop("verificationCode", None)
+        # Send verification email on first visit
+        try:
+            emailSent = send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+            if not emailSent:
+                flash("Something went wrong in sending a verification email. Please try again.", category="Error")
+                db.session.delete(unverifiedRecord)
+                db.session.commit()
+                session.pop("unverifiedID", None)
+                return redirect("/register")
+            else:
+                flash("A verification code has been sent to your email inbox (if it exists). Please also check your junk folder.", category="Success")
+        except:
+            flash("An internet connection is required to create an account", category="Error")
             return redirect("/register")
-        else:
-            flash("A verification code has been sent to your email inbox (if it exists). Please also check your junk folder.", category="Success")
     return render_template("webpages/user_management/verify.html", is_password_reset=False)
 
-@user_redirection.route("/forgot-password", methods = ["POST"])
+
+@user_redirection.route("/forgot-password", methods=["POST"])
 def forgot_password():
     # Handles password reset request from login page
     email = request.form.get("forgot_email").strip()
@@ -263,15 +291,44 @@ def forgot_password():
     barber = tblBarber.query.filter_by(EmailAddress = email).first()
 
     if customer or barber:
-        # Generate OTP code from email_otp.py
+        # Generate OTP code
         otpCode = generate_otp()
 
-        # Store in session for verification
-        session["passwordResetOTP"] = otpCode
-        session["passwordResetEmail"] = email
-        session["isPasswordReset"] = True
+        # Create unverified record for password reset
+        # Use existing data from customer/barber table
+        if customer:
+            # noinspection PyArgumentList
+            resetRecord = tblUnverified(
+                FirstName = customer.FirstName,
+                MiddleName = customer.MiddleName,
+                LastName = customer.LastName,
+                EmailAddress = customer.EmailAddress,
+                HashedPassword = customer.HashedPassword,
+                PhoneNumber = customer.PhoneNumber,
+                VerificationCode = otpCode,
+                IsPasswordReset = True
+            )
+        else:
+            # If the user is a barber
+            # noinspection PyArgumentList
+            resetRecord = tblUnverified(
+                FirstName=barber.FirstName,
+                MiddleName=barber.MiddleName,
+                LastName=barber.LastName,
+                EmailAddress=barber.EmailAddress,
+                HashedPassword=barber.HashedPassword,
+                PhoneNumber="",
+                VerificationCode=otpCode,
+                IsPasswordReset=True
+            )
 
-        # Send verification email from email_otp.py
+        db.session.add(resetRecord)
+        db.session.commit()
+
+        # Stores only unverified ID in session
+        session["unverifiedID"] = resetRecord.UnverifiedID
+
+        # Sends verification email
         senderEmail = "157adampatel@gmail.com"
         emailPassword = "cmfv nffy fscy usmu"
 
@@ -283,75 +340,90 @@ def forgot_password():
         )
 
         if success:
-            flash("Password reset code sent to your email!", category = "Success")
-            # Redirect to verify page
+            flash("Password reset code sent to your email!", category="Success")
             return redirect("/verify_password_reset")
         else:
-            flash("Failed to send email. Please try again.", category = "Error")
+            flash("Failed to send email. Please try again.", category="Error")
+            db.session.delete(resetRecord)
+            db.session.commit()
             return redirect("/login")
     else:
-        flash("No account exists with that email. Enter a different email or Create an Account.", category = "Error")
+        flash("No account exists with that email. Enter a different email or Create an Account.", category="Error")
         return redirect("/login")
+
 
 @user_redirection.route("/verify_password_reset", methods=["GET", "POST"])
 def verify_password_reset():
-    # Handles OTP verification for password reset
-    # Checks if user has a pending password reset
-    if "isPasswordReset" not in session or "passwordResetOTP" not in session:
+    # Checks if the user has a pending password reset
+    if "unverifiedID" not in session:
         flash("Please request a password reset first.", category="Error")
+        return redirect("/login")
+
+    # Retrieves unverified record from database
+    unverifiedID = session["unverifiedID"]
+    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=True).first()
+
+    if not unverifiedRecord:
+        flash("Password reset session expired or invalid. Please try again.", category="Error")
+        session.pop("unverifiedID", None)
         return redirect("/login")
 
     if request.method == "POST":
         getOtp = request.form.get("otpCode").strip()
-        storedOtp = session["passwordResetOTP"]
+        storedOtp = unverifiedRecord.VerificationCode
 
         if getOtp == storedOtp:
-            session.pop("passwordResetOTP", None)
             flash("Email verified. Please set your new password.", category="Success")
             return redirect("/set_new_password")
         else:
             flash("Incorrect verification code. Please try again.", category="Error")
 
-    # Render the verify.html webpage with password reset content
-    return render_template(
-        "webpages/user_management/verify.html",
-        is_password_reset = True
-    )
+    return render_template("webpages/user_management/verify.html", is_password_reset=True)
 
-@user_redirection.route("/set_new_password", methods = ["GET", "POST"])
+
+@user_redirection.route("/set_new_password", methods=["GET", "POST"])
 def set_new_password():
-    # Handles setting new password after OTP verification
-    # Check if user completed OTP verification
-    if "passwordResetEmail" not in session or "isPasswordReset" not in session:
+    # Checks if user has completed OTP verification
+    if "unverifiedID" not in session:
         flash("Please complete the password reset process from the beginning.", category="Error")
+        return redirect("/login")
+
+    # Retrieves unverified record
+    unverifiedID = session["unverifiedID"]
+    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=True).first()
+
+    if not unverifiedRecord:
+        flash("Password reset session expired or invalid. Please try again.", category="Error")
+        session.pop("unverifiedID", None)
         return redirect("/login")
 
     if request.method == "POST":
         newPassword = request.form.get("new_password")
         confirmPassword = request.form.get("confirm_password")
 
-        # Validate passwords using existing validation function - REUSING validatePassword()
+        # Validates passwords using existing validation function
         if validatePassword(newPassword, confirmPassword):
-            # Hashes the new password using hash_password() from hash_password.py
+            # Hashes the new password
             hashedPassword = hash_password(newPassword)
 
-            # Update password in database
-            email = session["passwordResetEmail"]
-            customer = tblCustomer.query.filter_by(EmailAddress = email).first()
-            barber = tblBarber.query.filter_by(EmailAddress = email).first()
+            # Updates password in database
+            email = unverifiedRecord.EmailAddress
+            customer = tblCustomer.query.filter_by(EmailAddress=email).first()
+            barber = tblBarber.query.filter_by(EmailAddress=email).first()
 
             if customer:
                 customer.HashedPassword = hashedPassword
-                db.session.commit()
             elif barber:
                 barber.HashedPassword = hashedPassword
-                db.session.commit()
 
-            # Clears all session data from the cookie
-            session.pop("passwordResetEmail", None)
-            session.pop("isPasswordReset", None)
+            # Deletes unverified record
+            db.session.delete(unverifiedRecord)
+            db.session.commit()
 
-            flash("Password reset successful! Please login with your new password.", category = "Success")
+            # Clears the cookie storing the unverifiedID from the session
+            session.pop("unverifiedID", None)
+
+            flash("Password reset successful! Please login with your new password.", category="Success")
             return redirect("/login")
 
     return render_template("webpages/user_management/forgot_password.html")

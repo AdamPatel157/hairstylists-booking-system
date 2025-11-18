@@ -80,3 +80,17 @@ class tblAppointmentServices(db.Model):
     __tablename__ = "tblAppointmentServices"
     ServiceID = db.Column(db.Integer, db.ForeignKey('tblService.ServiceID'), primary_key=True, nullable=False)
     BookingReference = db.Column(db.Integer, db.ForeignKey('tblAppointment.BookingReference'), primary_key=True, nullable=False)
+
+# noinspection PyPep8Naming
+class tblUnverified(db.Model):
+    __tablename__ = "tblUnverified"
+    UnverifiedID = db.Column(db.Integer, primary_key=True, nullable=False)
+    FirstName = db.Column(db.String(50), nullable=False)
+    MiddleName = db.Column(db.String(50), nullable=True)
+    LastName = db.Column(db.String(50), nullable=False)
+    EmailAddress = db.Column(db.String(50), nullable=False)
+    HashedPassword = db.Column(db.String(64), nullable=False)
+    PhoneNumber = db.Column(db.String(11), nullable=True)
+    VerificationCode = db.Column(db.String(6), nullable=False)
+    CodeCreatedAt = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)
+    IsPasswordReset = db.Column(db.Boolean, default=False, nullable=False)
