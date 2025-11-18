@@ -4,13 +4,10 @@ from flask import Flask
 import os
 
 # Imports the flask SQL toolkit that provides access for relational databases
-from flask_sqlalchemy import SQLAlchemy
-from flask_sqlalchemy.track_modifications import models_committed
+
 
 from flask_login import LoginManager
 
-
-db = SQLAlchemy()
 dbName = "database.db"
 
 def create_app():
@@ -19,9 +16,8 @@ def create_app():
     app.secret_key = b'Adam157'
     # Initialises the website with a private secret key
 
-    baseDir = os.path.abspath(os.path.dirname(__file__))
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(baseDir, dbName)}"
-    db.init_app(app)
+    from .database_management import init_db, get_customer_by_id, get_barber_by_id
+    init_db()
     # Links the flask application to the relational database
 
     from .views import views
@@ -30,9 +26,6 @@ def create_app():
     app.register_blueprint(views, url_prefix="/")
     app.register_blueprint(user_redirection, url_prefix="/")
 
-    # noinspection PyUnresolvedReferences
-    from .models import tblCustomer, tblBarber, tblAppointment, tblService, tblTimeSlot, tblAppointmentSlots, tblAppointmentServices
-
     create_database(app)
 
     loginManager = LoginManager()
@@ -40,8 +33,40 @@ def create_app():
     loginManager.init_app(app)
 
     @loginManager.user_loader
-    def load_user(id):
-        return tblCustomer.query.get(int(id))
+    def load_user(userId):
+        # Flask-Login calls this to reload user from session
+        # userId format: "customer_123" or "barber_456"
+        from algorithms.user_classes import Customer, Barber
+
+        if userId.startswith("customer_"):
+            customerId = int(userId.split("_")[1])
+            customerData = get_customer_by_id(customerId)
+            if customerData:
+                # Construct Customer object from database row
+                return Customer(
+                    customerId=customerData['CustomerID'],
+                    firstName=customerData['FirstName'],
+                    middleName=customerData['MiddleName'],
+                    lastName=customerData['LastName'],
+                    email=customerData['EmailAddress'],
+                    hashedPassword=customerData['HashedPassword'],
+                    isBlacklisted=customerData['IsBlackListed'],
+                    phoneNumber=customerData['PhoneNumber']
+                )
+        elif userId.startswith("barber_"):
+            barberId = int(userId.split("_")[1])
+            barberData = get_barber_by_id(barberId)
+            if barberData:
+                return Barber(
+                    barberId=barberData['BarberID'],
+                    firstName=barberData['FirstName'],
+                    middleName=barberData['MiddleName'],
+                    lastName=barberData['LastName'],
+                    email=barberData['EmailAddress'],
+                    hashedPassword=barberData['HashedPassword'],
+                    isAdmin=barberData['IsAdmin']
+                )
+        return None
 
     return app
 

@@ -6,10 +6,10 @@ from flask import Blueprint, render_template, request, flash, redirect, session
 # 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
 # 'session' library allows data to be stored temporarily in cookies.
 
-from .models import tblCustomer, tblBarber, tblUnverified
-# Allows the system to add new records to tblCustomer by accessing its class in models.py
-
-from . import db
+from website.database_management import (get_customer_by_email, get_barber_by_email, create_customer,
+    get_customer_by_phone, create_unverified, get_unverified_by_id,
+    delete_unverified, update_customer_password, update_barber_password)
+# Allows the system to access user-related database manipulation functions and access tables
 
 from algorithms.hash_password import hash_password
 
@@ -20,6 +20,11 @@ from algorithms.email_otp import generate_otp, send_verification_email
 from flask_login import login_user, logout_user, login_required
 
 from algorithms.time_limits import cleanup_expired_unverified
+
+from algorithms.user_classes import Customer, Barber
+
+import re
+# Allows for the use of Regular Expressions
 
 user_redirection = Blueprint("auth", __name__)
 
@@ -39,33 +44,32 @@ def validateName(name, namePos):
     else:
         return True
 
+
 def validateEmail(emailAddress):
-    if len(emailAddress) < 4:
-        flash("Length of Email must be greater than 3 characters long.", category="Error")
-        return False
-    elif '@' not in list(emailAddress):
-        flash("Email must contain '@' symbol.", category="Error")
-        return False
-    elif '.' not in list(emailAddress):
-        flash("Email must contain '.' symbol.", category="Error")
+    # Uses Regular Expressions to ensure that emails are of the format: 'user@example.com'
+    emailPattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+    if not re.match(emailPattern, emailAddress):
+        flash("Please enter a valid email address (e.g., user@example.com).", category = "Error")
         return False
     else:
         return True
 
 def validatePhoneNumber(phoneNum):
-    numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-    if phoneNum == "": # Allows empty phone number fields as it is optional
+    if phoneNum == "":  # Allows empty phone number fields as it is optional
         return True
-    if len(phoneNum) != 11:
-        flash("Phone Numbers must be exactly 11 characters long.", category="Error")
-        return False
     else:
-        for character in phoneNum:
-            if character not in numbers:
-                flash("Phone Numbers can only contain integer numbers 0-9.", category="Error")
-                return False
-        if phoneNum[0] != '0':
-            flash("Phone Numbers must begin with the number '0'.", category="Error")
+        # Uses Regular Expressions to ensure phone numbers are exactly 11 digits and start with 0
+        phonePattern = r'^0\d{10}$'
+        if not re.match(phonePattern, phoneNum):
+            if not phoneNum.isdigit():
+                flash("Phone Numbers can only contain digits 0-9.", category = "Error")
+            elif len(phoneNum) != 11:
+                flash("Phone Numbers must be exactly 11 characters long.", category="Error")
+            elif phoneNum[0] != '0':
+                flash("Phone Numbers must begin with the number '0'.", category="Error")
+            else:
+                flash("Please enter a valid phone number.", category="Error")
             return False
         else:
             return True
@@ -115,19 +119,39 @@ def login():
         email = request.form.get("email").strip()
         password = request.form.get("password")
 
-        customer = tblCustomer.query.filter_by(EmailAddress=email).first()
-        barber = tblBarber.query.filter_by(EmailAddress=email).first()
+        customerData = get_customer_by_email(email)
+        barberData = get_barber_by_email(email)
 
-        if customer:
-            if customer.HashedPassword == hash_password(password):
+        if customerData:
+            if customerData["HashedPassword"] == hash_password(password):
                 flash("You have successfully logged in and been taken to the customer dashboard", category="Success")
+                # Creates Customer object for Flask-Login
+                customer = Customer(
+                    customerId=customerData['CustomerID'],
+                    firstName=customerData['FirstName'],
+                    middleName=customerData['MiddleName'],
+                    lastName=customerData['LastName'],
+                    email=customerData['EmailAddress'],
+                    hashedPassword=customerData['HashedPassword'],
+                    isBlacklisted=customerData['IsBlackListed'],
+                    phoneNumber=customerData['PhoneNumber']
+                )
                 login_user(customer, remember=True)
                 return redirect("/customer_dashboard")
             else:
                 flash("Incorrect Password. Please try again.", category="Error")
-        elif barber:
-            if barber.HashedPassword == hash_password(password):
+        elif barberData:
+            if barberData["HashedPassword"] == hash_password(password):
                 flash("You have successfully logged in and been taken to the barber dashboard", category="Success")
+                barber = Barber(
+                    barberId=barberData['BarberID'],
+                    firstName=barberData['FirstName'],
+                    middleName=barberData['MiddleName'],
+                    lastName=barberData['LastName'],
+                    email=barberData['EmailAddress'],
+                    hashedPassword=barberData['HashedPassword'],
+                    isAdmin=barberData['IsAdmin']
+                )
                 login_user(barber, remember=True)
                 return redirect("/") # Link to barber dashboard
             else:
@@ -140,7 +164,7 @@ def login():
 @user_redirection.route("/register", methods=["GET", "POST"])
 def register():
     # Cleans up expired unverified records
-    cleanup_expired_unverified(db, tblUnverified)
+    cleanup_expired_unverified()
 
     if request.method == "POST": # Evaluates the below block if receiving a POST request from the register.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
@@ -153,13 +177,13 @@ def register():
         password2 = request.form.get("password2")
 
         # Ensures that no account already exists with the same email address
-        customer = tblCustomer.query.filter_by(EmailAddress = email).first()
+        customer = get_customer_by_email(email)
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
             return redirect("/register")
 
         # Ensures that no account already exists with the same phone number, but allows empty fields
-        customerWithPhone = tblCustomer.query.filter_by(PhoneNumber = phoneNumber).first()
+        customerWithPhone = get_customer_by_phone(phoneNumber)
         if customerWithPhone and customerWithPhone != "":
             flash("An account has already been created with this phone number. Please try again with a different number." ,category="Error")
             return redirect("/register")
@@ -181,22 +205,13 @@ def register():
             # Creates unverified record in database
             verificationCode = generate_otp()
 
-            # noinspection PyArgumentList
-            newUnverified = tblUnverified(
-                FirstName=firstName,
-                MiddleName=middleName,
-                LastName=lastName,
-                EmailAddress=email,
-                HashedPassword=hashedPassword,
-                PhoneNumber=phoneNumber,
-                VerificationCode=verificationCode,
-                IsPasswordReset=False
+            unverifiedId = create_unverified(
+                firstName, middleName, lastName, email,
+                hashedPassword, phoneNumber, verificationCode, 0
             )
-            db.session.add(newUnverified)
-            db.session.commit()
 
             # Stores only the unverified ID in cookie so that database records from that ID can be retrieved
-            session["unverifiedID"] = newUnverified.UnverifiedID
+            session["unverifiedID"] = unverifiedId
 
             return redirect("/verify_email")
 
@@ -218,16 +233,16 @@ def verify_email():
         return redirect("/register")
 
     # Retrieves unverified user ID record from database
-    unverifiedID = session["unverifiedID"]
-    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=False).first()
+    unverifiedId = session["unverifiedID"]
+    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=0)
 
     if not unverifiedRecord:
         flash("Registration session expired. Please try again.", category="Error")
         session.pop("unverifiedID", None)
         return redirect("/register")
 
-    email = unverifiedRecord.EmailAddress
-    verificationCode = unverifiedRecord.VerificationCode
+    email = unverifiedRecord["EmailAddress"]
+    verificationCode = unverifiedRecord["VerificationCode"]
 
     # Email Configuration
     sendingEmail = "157adampatel@gmail.com"
@@ -238,21 +253,17 @@ def verify_email():
         getVerificationCode = request.form.get("otpCode").strip()
 
         if getVerificationCode == verificationCode:
-            # noinspection PyArgumentList
-            newCustomer = tblCustomer(
-                FirstName=unverifiedRecord.FirstName,
-                MiddleName=unverifiedRecord.MiddleName,
-                LastName=unverifiedRecord.LastName,
-                EmailAddress=unverifiedRecord.EmailAddress,
-                HashedPassword=unverifiedRecord.HashedPassword,
-                IsBlackListed=False,
-                PhoneNumber=unverifiedRecord.PhoneNumber
+            create_customer(
+                unverifiedRecord["FirstName"],
+                unverifiedRecord["MiddleName"],
+                unverifiedRecord["LastName"],
+                unverifiedRecord["EmailAddress"],
+                unverifiedRecord["HashedPassword"],
+                unverifiedRecord["PhoneNumber"]
             )
-            db.session.add(newCustomer)
 
             # Deletes unverified record
-            db.session.delete(unverifiedRecord)
-            db.session.commit()
+            delete_unverified(unverifiedId)
 
             # Clears temporary cookie data once records are moved to tblCustomer
             session.pop("unverifiedID", None)
@@ -269,8 +280,7 @@ def verify_email():
             emailSent = send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
             if not emailSent:
                 flash("Something went wrong in sending a verification email. Please try again.", category="Error")
-                db.session.delete(unverifiedRecord)
-                db.session.commit()
+                delete_unverified(unverifiedId)
                 session.pop("unverifiedID", None)
                 return redirect("/register")
             else:
@@ -286,47 +296,41 @@ def forgot_password():
     # Handles password reset request from login page
     email = request.form.get("forgot_email").strip()
 
-    # Check if email exists in either customer or barber table
-    customer = tblCustomer.query.filter_by(EmailAddress = email).first()
-    barber = tblBarber.query.filter_by(EmailAddress = email).first()
+    # Checks if email exists in either customer or barber table
+    customerData = get_customer_by_email(email)
+    barberData = get_barber_by_email(email)
 
-    if customer or barber:
-        # Generate OTP code
+    if customerData or barberData:
         otpCode = generate_otp()
 
-        # Create unverified record for password reset
-        # Use existing data from customer/barber table
-        if customer:
-            # noinspection PyArgumentList
-            resetRecord = tblUnverified(
-                FirstName = customer.FirstName,
-                MiddleName = customer.MiddleName,
-                LastName = customer.LastName,
-                EmailAddress = customer.EmailAddress,
-                HashedPassword = customer.HashedPassword,
-                PhoneNumber = customer.PhoneNumber,
-                VerificationCode = otpCode,
-                IsPasswordReset = True
+        # Creates unverified record for password reset
+        # Uses existing data from customer/barber table
+        if customerData:
+            unverifiedId = create_unverified(
+                customerData['FirstName'],
+                customerData['MiddleName'],
+                customerData['LastName'],
+                customerData['EmailAddress'],
+                customerData['HashedPassword'],
+                customerData['PhoneNumber'],
+                otpCode,
+                1  # Signals that isPasswordReset = True
             )
         else:
             # If the user is a barber
-            # noinspection PyArgumentList
-            resetRecord = tblUnverified(
-                FirstName=barber.FirstName,
-                MiddleName=barber.MiddleName,
-                LastName=barber.LastName,
-                EmailAddress=barber.EmailAddress,
-                HashedPassword=barber.HashedPassword,
-                PhoneNumber="",
-                VerificationCode=otpCode,
-                IsPasswordReset=True
+            unverifiedId = create_unverified(
+                barberData['FirstName'],
+                barberData['MiddleName'],
+                barberData['LastName'],
+                barberData['EmailAddress'],
+                barberData['HashedPassword'],
+                "",
+                otpCode,
+                1
             )
 
-        db.session.add(resetRecord)
-        db.session.commit()
-
         # Stores only unverified ID in session
-        session["unverifiedID"] = resetRecord.UnverifiedID
+        session["unverifiedID"] = unverifiedId
 
         # Sends verification email
         senderEmail = "157adampatel@gmail.com"
@@ -344,8 +348,7 @@ def forgot_password():
             return redirect("/verify_password_reset")
         else:
             flash("Failed to send email. Please try again.", category="Error")
-            db.session.delete(resetRecord)
-            db.session.commit()
+            delete_unverified(unverifiedId)
             return redirect("/login")
     else:
         flash("No account exists with that email. Enter a different email or Create an Account.", category="Error")
@@ -360,8 +363,8 @@ def verify_password_reset():
         return redirect("/login")
 
     # Retrieves unverified record from database
-    unverifiedID = session["unverifiedID"]
-    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=True).first()
+    unverifiedId = session["unverifiedID"]
+    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=1)
 
     if not unverifiedRecord:
         flash("Password reset session expired or invalid. Please try again.", category="Error")
@@ -370,7 +373,7 @@ def verify_password_reset():
 
     if request.method == "POST":
         getOtp = request.form.get("otpCode").strip()
-        storedOtp = unverifiedRecord.VerificationCode
+        storedOtp = unverifiedRecord["VerificationCode"]
 
         if getOtp == storedOtp:
             flash("Email verified. Please set your new password.", category="Success")
@@ -389,8 +392,8 @@ def set_new_password():
         return redirect("/login")
 
     # Retrieves unverified record
-    unverifiedID = session["unverifiedID"]
-    unverifiedRecord = tblUnverified.query.filter_by(UnverifiedID=unverifiedID, IsPasswordReset=True).first()
+    unverifiedId = session["unverifiedID"]
+    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=1)
 
     if not unverifiedRecord:
         flash("Password reset session expired or invalid. Please try again.", category="Error")
@@ -407,18 +410,19 @@ def set_new_password():
             hashedPassword = hash_password(newPassword)
 
             # Updates password in database
-            email = unverifiedRecord.EmailAddress
-            customer = tblCustomer.query.filter_by(EmailAddress=email).first()
-            barber = tblBarber.query.filter_by(EmailAddress=email).first()
+            email = unverifiedRecord["EmailAddress"]
 
-            if customer:
-                customer.HashedPassword = hashedPassword
-            elif barber:
-                barber.HashedPassword = hashedPassword
+            # Check which type of user and update accordingly
+            customerData = get_customer_by_email(email)
+            barberData = get_barber_by_email(email)
+
+            if customerData:
+                update_customer_password(email, hashedPassword)
+            elif barberData:
+                update_barber_password(email, hashedPassword)
 
             # Deletes unverified record
-            db.session.delete(unverifiedRecord)
-            db.session.commit()
+            delete_unverified(unverifiedId)
 
             # Clears the cookie storing the unverifiedID from the session
             session.pop("unverifiedID", None)

@@ -1,9 +1,6 @@
-from datetime import datetime, timedelta
+from website.database_management import cleanup_expired_unverified as db_cleanup
 
-def cleanup_expired_unverified(db, tblUnverified):
-    # Deletes tblUnverified records older than 24 hours from the database
-    expiryTime = datetime.now() - timedelta(hours=24)
-    expiredRecords = tblUnverified.query.filter(tblUnverified.CodeCreatedAt < expiryTime).all()
-    for record in expiredRecords:
-        db.session.delete(record)
-    db.session.commit()
+def cleanup_expired_unverified():
+    # Cleans up unverified records older than 30 minutes
+    # Called before registration to prevent excessive data volume
+    return db_cleanup(expiryMinutes=30)

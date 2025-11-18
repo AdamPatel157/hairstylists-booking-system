@@ -14,28 +14,39 @@ class User:
     def logout(self):
         pass
 
-# Creates the 'Customer' subclass inheriting from the 'User' superclass
-class Customer(User):
-    def __init__(self, customerID, phoneNumber, isBlacklisted):
-        self.customerID = customerID
-        self.phoneNumber = phoneNumber
+from flask_login import UserMixin
+
+class Customer(UserMixin):
+    # Represents a logged-in customer user
+    # UserMixin provides default implementations for Flask-Login methods
+    def __init__(self, customerId, firstName, middleName, lastName, email, hashedPassword, isBlacklisted, phoneNumber):
+        self.customerId = customerId
+        self.firstName = firstName
+        self.middleName = middleName
+        self.lastName = lastName
+        self.email = email
+        self.hashedPassword = hashedPassword
         self.isBlacklisted = isBlacklisted
+        self.phoneNumber = phoneNumber
 
-    def createAccount(self):
-        pass
+    def get_id(self):
+        # Flask-Login uses this to store user ID in session
+        # Prefix distinguishes customers from barbers
+        return f"customer_{self.customerId}"
 
-    def bookAppointment(self):
-        pass
-
-    def viewAppointment(self):
-        pass
-
-# Creates the 'Barber' subclass inheriting from the 'User' superclass
-class Barber(User):
-    def __init__(self, barberID, yearsOfExperience, isAdmin):
-        self.barberID = barberID
-        self.yearsOfExperience = yearsOfExperience
+class Barber(UserMixin):
+    # Represents a logged-in barber/admin user
+    def __init__(self, barberId, firstName, middleName, lastName, email, hashedPassword, isAdmin):
+        self.barberId = barberId
+        self.firstName = firstName
+        self.middleName = middleName
+        self.lastName = lastName
+        self.email = email
+        self.hashedPassword = hashedPassword
         self.isAdmin = isAdmin
+
+    def get_id(self):
+        return f"barber_{self.barberId}"
 
     def viewSchedule(self):
         pass
