@@ -244,11 +244,6 @@ def verify_email():
     email = unverifiedRecord["EmailAddress"]
     verificationCode = unverifiedRecord["VerificationCode"]
 
-    # Email Configuration
-    sendingEmail = "157adampatel@gmail.com"
-    receivingEmail = email
-    password = "cmfv nffy fscy usmu"
-
     if request.method == "POST":
         getVerificationCode = request.form.get("otpCode").strip()
 
@@ -277,7 +272,7 @@ def verify_email():
     elif request.method == "GET":
         # Send verification email on first visit
         try:
-            emailSent = send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+            emailSent = send_verification_email(email, verificationCode)
             if not emailSent:
                 flash("Something went wrong in sending a verification email. Please try again.", category="Error")
                 delete_unverified(unverifiedId)
@@ -332,16 +327,7 @@ def forgot_password():
         # Stores only unverified ID in session
         session["unverifiedID"] = unverifiedId
 
-        # Sends verification email
-        senderEmail = "157adampatel@gmail.com"
-        emailPassword = "cmfv nffy fscy usmu"
-
-        success = send_verification_email(
-            senderEmail,
-            email,
-            emailPassword,
-            otpCode
-        )
+        success = send_verification_email(email, otpCode)
 
         if success:
             flash("Password reset code sent to your email!", category="Success")

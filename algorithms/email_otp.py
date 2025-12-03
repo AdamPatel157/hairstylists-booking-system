@@ -13,11 +13,14 @@ def generate_otp() -> str:
         otpCode = otpCode + str(random.randint(0, 9))
     return otpCode
 
-def send_verification_email(senderEmail: str, receiverEmail: str, emailPassword: str, otpCode: str):
+def send_verification_email(receiverEmail: str, otpCode: str):
     # Sends a verification email containing the OTP code using Gmail's SMTP server
     # Email Content
     subject = "Your Email Verification Code"
     body = "Your verification code is: " + otpCode
+
+    senderEmail = "ganihairbookings@gmail.com"
+    emailPassword = "ykyj bzqn jgos jhmd" # Google App Password created for email account
 
     message = MIMEMultipart()
     message["From"] = senderEmail
@@ -47,13 +50,9 @@ def send_verification_email(senderEmail: str, receiverEmail: str, emailPassword:
         print("Email failed to send.")
         return False
 
+# For testing the individual module:
+
 if __name__ == "__main__":
-    # Generates a random 6 digit code to send to the user as a verification email
     verificationCode = generate_otp()
-
-    # Email Configuration
-    sendingEmail = "157adampatel@gmail.com"
-    receivingEmail = "adampatel157@outlook.com"
-    password = "cmfv nffy fscy usmu" # Google App Password created for email account
-
-    send_verification_email(sendingEmail, receivingEmail, password, verificationCode)
+    receivingEmail = input("Enter your email address: ")
+    send_verification_email(receivingEmail, verificationCode)
