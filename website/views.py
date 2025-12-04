@@ -10,4 +10,4 @@ def home():
 @views.route("/customer_dashboard")
 @login_required
 def customer_dashboard():
-    return render_template("webpages/customer_facing/customer_dashboard.html", user=current_user)
+    return render_template("webpages/customer_facing/customer_dashboard.html", firstName=current_user.firstName)

@@ -26,7 +26,7 @@ from algorithms.user_classes import Customer, Barber
 import re
 # Allows for the use of Regular Expressions
 
-user_redirection = Blueprint("auth", __name__)
+userRedirection = Blueprint("auth", __name__)
 
 # Registration Validation Functions
 # If validation test for field passes, returns True
@@ -112,7 +112,7 @@ def validatePassword(createPassword, confirmPassword):
 
 # Processes webpage HTTP requests
 
-@user_redirection.route("/login", methods=["GET", "POST"])
+@userRedirection.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST": # Evaluates the below block if receiving a POST request from the login.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
@@ -161,8 +161,9 @@ def login():
 
     return render_template("webpages/user_management/login.html")
 
-@user_redirection.route("/register", methods=["GET", "POST"])
+@userRedirection.route("/register", methods=["GET", "POST"])
 def register():
+    error = False
     # Cleans up expired unverified records
     cleanup_expired_unverified()
 
@@ -178,46 +179,52 @@ def register():
 
         # Ensures that no account already exists with the same email address
         customer = get_customer_by_email(email)
+        customerWithPhone = get_customer_by_phone(phoneNumber)
+        print(customerWithPhone)
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
-            return redirect("/register")
+            error=True
 
         # Ensures that no account already exists with the same phone number, but allows empty fields
-        customerWithPhone = get_customer_by_phone(phoneNumber)
-        if customerWithPhone and customerWithPhone != "":
+        elif customerWithPhone and phoneNumber != "":
             flash("An account has already been created with this phone number. Please try again with a different number." ,category="Error")
-            return redirect("/register")
+            error=True
+        else:
+            # Passes form inputs into registration validation procedures
+            # The procedures return True if passes validation and False if it fails
+            firstNameIsValidated = validateName(firstName, "First")
+            middleNameIsValidated = validateName(middleName, "Middle")
+            lastNameIsValidated = validateName(lastName, "Last")
+            emailIsValidated = validateEmail(email)
+            phoneNumberIsValidated = validatePhoneNumber(phoneNumber)
+            passwordIsValidated = validatePassword(password1, password2)
 
-        # Passes form inputs into registration validation procedures
-        # The procedures return True if passes validation and False if it fails
-        firstNameIsValidated = validateName(firstName, "First")
-        middleNameIsValidated = validateName(middleName, "Middle")
-        lastNameIsValidated = validateName(lastName, "Last")
-        emailIsValidated = validateEmail(email)
-        phoneNumberIsValidated = validatePhoneNumber(phoneNumber)
-        passwordIsValidated = validatePassword(password1, password2)
+            # If all validation check procedures are true, stores inputs in tblUnverified in database
+            if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
+                # Hashes password before storing
+                hashedPassword = hash_password(password1)
 
-        # If all validation check procedures are true, stores inputs in tblUnverified in database
-        if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
-            # Hashes password before storing
-            hashedPassword = hash_password(password1)
+                # Creates unverified record in database
+                verificationCode = generate_otp()
 
-            # Creates unverified record in database
-            verificationCode = generate_otp()
+                unverifiedId = create_unverified(
+                    firstName, middleName, lastName, email,
+                    hashedPassword, phoneNumber, verificationCode, 0
+                )
 
-            unverifiedId = create_unverified(
-                firstName, middleName, lastName, email,
-                hashedPassword, phoneNumber, verificationCode, 0
-            )
+                # Stores only the unverified ID in cookie so that database records from that ID can be retrieved
+                session["unverifiedID"] = unverifiedId
 
-            # Stores only the unverified ID in cookie so that database records from that ID can be retrieved
-            session["unverifiedID"] = unverifiedId
+                return redirect("/verify_email")
+            else:
+                error=True
+    if error:
+        return render_template("webpages/user_management/register.html", firstName=firstName, middleName=middleName, lastName=lastName, email=email, phoneNumber=phoneNumber, password1=password1, password2=password2)
+    else:
+        return render_template("webpages/user_management/register.html")
 
-            return redirect("/verify_email")
 
-    return render_template("webpages/user_management/register.html")
-
-@user_redirection.route("/logout")
+@userRedirection.route("/logout")
 @login_required # Only allows user to access this route if they are logged in
 def logout():
     logout_user()
@@ -225,7 +232,7 @@ def logout():
     return redirect("/")
 
 
-@user_redirection.route("/verify_email", methods=["GET", "POST"])
+@userRedirection.route("/verify_email", methods=["GET", "POST"])
 def verify_email():
     # Checks if there is a pending registration
     if "unverifiedID" not in session:
@@ -286,7 +293,7 @@ def verify_email():
     return render_template("webpages/user_management/verify.html", is_password_reset=False)
 
 
-@user_redirection.route("/forgot-password", methods=["POST"])
+@userRedirection.route("/forgot-password", methods=["POST"])
 def forgot_password():
     # Handles password reset request from login page
     email = request.form.get("forgot_email").strip()
@@ -341,7 +348,7 @@ def forgot_password():
         return redirect("/login")
 
 
-@user_redirection.route("/verify_password_reset", methods=["GET", "POST"])
+@userRedirection.route("/verify_password_reset", methods=["GET", "POST"])
 def verify_password_reset():
     # Checks if the user has a pending password reset
     if "unverifiedID" not in session:
@@ -370,7 +377,7 @@ def verify_password_reset():
     return render_template("webpages/user_management/verify.html", is_password_reset=True)
 
 
-@user_redirection.route("/set_new_password", methods=["GET", "POST"])
+@userRedirection.route("/set_new_password", methods=["GET", "POST"])
 def set_new_password():
     # Checks if user has completed OTP verification
     if "unverifiedID" not in session:

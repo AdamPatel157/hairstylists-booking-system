@@ -79,7 +79,7 @@ def hash_password(getPassword):
     final_hash = ''.join(format(value, '08x') for value in h)
     return final_hash
 
-# Main Program Starts Here
+# For individual module testing purposes:
 
 if __name__ == "__main__":
     getString = input("Enter your password: ")

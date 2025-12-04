@@ -21,10 +21,10 @@ def create_app():
     # Links the flask application to the relational database
 
     from .views import views
-    from .user_redirection import user_redirection
+    from .user_redirection import userRedirection
 
     app.register_blueprint(views, url_prefix="/")
-    app.register_blueprint(user_redirection, url_prefix="/")
+    app.register_blueprint(userRedirection, url_prefix="/")
 
     create_database(app)
 
