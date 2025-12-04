@@ -5,7 +5,7 @@ databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
 def get_db_connection():
     # Creates a connection to the SQLite database
-    # row_factory makes results accessible like dictionaries
+    # row_factory makes results accessible as dictionaries
     conn = sqlite3.connect(databasePath)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -13,7 +13,6 @@ def get_db_connection():
 
 def init_db():
     # Creates all required tables if they don't exist
-    # This replaces SQLAlchemy's db.create_all()
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -255,6 +254,42 @@ def init_db():
                    )
                    """)
 
+    # Adds services details to tblService if table is empty
+
+    cursor.execute("SELECT COUNT(*) FROM tblService")
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+        defaultServices = [
+            ("MachineOnly", 14, 7.00, "Haircuts"),
+            ("MachineAndScissor", 20, 10.00, "Haircuts"),
+            ("SkinFade", 30, 15.00, "Haircuts"),
+            ("WaterOnlyRinse", 4, 2.00, "HairWashAndDry"),
+            ("ShampooWash", 8, 4.00, "HairWashAndDry"),
+            ("ShampooAndConditionerWash", 12, 6.00, "HairWashAndDry"),
+            ("BlackDye", 40, 40.00, "HairColour"),
+            ("DarkBrownDye", 40, 40.00, "HairColour"),
+            ("MediumBrownDye", 40, 40.00, "HairColour"),
+            ("LightBrownDye", 40, 40.00, "HairColour"),
+            ("BlondeDye", 40, 40.00, "HairColour"),
+            ("Bleach", 60, 30.00, "HairColour"),
+            ("BeardTrim", 10, 5.00, "BeardStyling"),
+            ("BeardLineup", 10, 5.00, "BeardStyling"),
+            ("BeardTrimAndLineup", 20, 10.00, "BeardStyling"),
+            ("BeardCleanShave", 20, 10.00, "BeardStyling"),
+            ("WaterOnlyRinse", 2, 1.00, "BeardWashAndDry"),
+            ("ShampooWash", 6, 3.00, "BeardWashAndDry"),
+            ("ShampooAndConditionerWash", 10, 5.00, "BeardWashAndDry"),
+            ("BeardOil", 2, 1.00, "BeardMiscellaneous"),
+            ("BeardFragrance", 2, 1.00, "BeardMiscellaneous"),
+            ("HotTowel", 2, 1.00, "BeardMiscellaneous"),
+        ]
+
+        cursor.executemany("""
+                           INSERT INTO tblService (ServiceName, Duration, Price, ServiceCategory)
+                           VALUES (?, ?, ?, ?)
+                           """, defaultServices)
+
     conn.commit()
     conn.close()
 
@@ -268,8 +303,8 @@ def create_customer(firstName, middleName, lastName, email, hashedPassword, phon
     cursor = conn.cursor()
     cursor.execute("""
                    INSERT INTO tblCustomer (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, IsBlackListed, PhoneNumber)
-                   VALUES (?, ?, ?, ?, ?, 0, ?)
-                   """, (firstName, middleName, lastName, email, hashedPassword, phoneNumber))
+                   VALUES (?, ?, ?, ?, ?, 0, ?)""",
+                   (firstName, middleName, lastName, email, hashedPassword, phoneNumber))
     conn.commit()
     customerId = cursor.lastrowid
     conn.close()
