@@ -7,19 +7,26 @@
 {% block body %}
 <nav class="navbar navbar-expand-lg custom-navbar">
     <button
-            class="navbar-toggler"
-            type="button"
-            data-toggle="collapse"
-            data-target="#navbar"
+        class="navbar-toggler"
+        type="button"
+        data-toggle="collapse"
+        data-target="#navbar"
     >
-<!-- Hyperlinks the navigation bar buttons to the corresponding webpages -->
         <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbar">
         <div class="navbar-nav">
-            <a class="nav-item nav-link" id="select_services" href="/select_services">Book Appointment</a>
-            <a class="nav-item nav-link" id="view_appointments" href="/view_appointments">View Appointments</a>
-            <a class="nav-item nav-link" id="logout" href="/logout">Logout</a>
+            {% if nav_context == "dashboard" %}
+                <!-- Dashboard navigation -->
+                <a class="nav-item nav-link" href="/customer_dashboard">Dashboard</a>
+                <a class="nav-item nav-link" href="/select_services">Book Appointment</a>
+                <a class="nav-item nav-link" href="/view_appointments">My Appointments</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
+            {% elif nav_context == "select_services" %}
+                <!-- Select Services navigation -->
+                <a class="nav-item nav-link" href="/customer_dashboard">Return to Customer Dashboard</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
+            {% endif %}
         </div>
     </div>
 </nav>

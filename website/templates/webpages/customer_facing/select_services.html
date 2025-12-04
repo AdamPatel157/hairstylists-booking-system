@@ -1,5 +1,70 @@
 {% extends "bases/customer_base.html" %}
-<!-- The above line causes this page to re-use all code in customer_base.html without re-writing -->
-<!-- This page utilises a CSS framework called bootstrap for the GUI -->
+<!-- This page reuses all code in customer_base.html -->
 <!-- Bootstrap designs have been imported with the links in website_base.html -->
 
+{% block title %}Select Services{% endblock %}
+
+{% block content %}
+<form method="POST">
+<div class="row mt-4">
+
+    <!-- Left Column: Service Selection -->
+    <div class="col-md-7">
+        <h1 class="mb-4"><strong>Select Services</strong></h1>
+
+        {% for category, services in servicesByCategory.items() %}
+        <div class="mb-4">
+            <h4><strong>{{ category }}</strong></h4>
+            {% for service in services %}
+            <div class="form-check">
+                <!--suppress HtmlUnknownAttribute -->
+                <input class="form-check-input" type="checkbox" name="service" value="{{ service.serviceId }}"
+                       id="service{{ service.serviceId }}"
+                       {{ 'checked' if service.serviceId in selectedServiceIds else '' }}>
+                <label class="form-check-label" for="service{{ service.serviceId }}">
+                    {{ service.serviceName }} (£{{ service.price|round(2) }})
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Right Column: Summary Table -->
+    <div class="col-md-5">
+        <h4><strong>Selected Services Summary</strong></h4>
+        <table class="table table-bordered mt-3">
+            <thead class="thead-light">
+                <tr>
+                    <th>Service</th>
+                    <th>Time (min)</th>
+                    <th>Price (£)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set totalPrice = 5.00 %}
+                {% set totalDuration = 0 %}
+                {% for service in selectedServices %}
+                <tr>
+                    <td>{{ service.serviceName }}</td>
+                    <td>{{ service.duration }}</td>
+                    <td>{{ service.price|round(2) }}</td>
+                </tr>
+                {% set totalPrice = totalPrice + service.price %}
+                {% set totalDuration = totalDuration + service.duration %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p><strong>Online Booking Fee:</strong> £5.00</p>
+        <p><strong>Total Price:</strong> £{{ totalPrice|round(2) }}</p>
+        <p><strong>Total Duration:</strong> {{ totalDuration }} minutes</p>
+
+        <button type="submit" class="btn btn-success btn-block mt-3">
+            Confirm Service Selection and proceed to Select Barber →
+        </button>
+    </div>
+
+</div>
+</form>
+{% endblock %}

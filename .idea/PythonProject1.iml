@@ -4,4 +4,7 @@
     <orderEntry type="jdk" jdkName="Python 3.12 (SkeletonCode)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="TemplatesService">
+    <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
+  </component>
 </module>

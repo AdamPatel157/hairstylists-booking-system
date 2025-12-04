@@ -1,5 +1,7 @@
 import sqlite3
 import os
+from flask import session
+from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
 
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
@@ -358,6 +360,53 @@ def update_customer_password(email, newHashedPassword):
     conn.commit()
     conn.close()
 
+def fetch_services():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT ServiceID, ServiceName, Duration, Price, ServiceCategory FROM tblService")
+    rows = cursor.fetchall()
+    conn.close()
+
+    servicesByCategory = {}
+    for serviceId, serviceName, duration, price, category in rows:
+        readableCategory = user_friendly_category_names(category)
+        readableName = user_friendly_service_names(serviceName)
+
+        if readableCategory not in servicesByCategory:
+            servicesByCategory[readableCategory] = []
+
+        servicesByCategory[readableCategory].append({
+            "serviceId": serviceId,
+            "serviceName": readableName,
+            "duration": duration,
+            "price": price
+        })
+
+    return servicesByCategory
+
+def get_selected_services():
+    selectedIds = session.get("selectedServiceIds", [])
+    if not selectedIds:
+        return []
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in selectedIds)
+    cursor.execute(f"""
+        SELECT ServiceID, ServiceName, Duration, Price
+        FROM tblService
+        WHERE ServiceID IN ({placeholders})
+    """, selectedIds)
+    selected = cursor.fetchall()
+    conn.close()
+
+    return [{
+        "serviceId": sid,
+        "serviceName": user_friendly_service_names(name),
+        "duration": duration,
+        "price": price
+    } for sid, name, duration, price in selected]
+
 # Parameterised SQL Statements for Barbers
 
 def get_barber_by_email(email):
@@ -395,7 +444,7 @@ def update_barber_password(email, newHashedPassword):
     conn.close()
 
 
-# UNVERIFIED USER OPERATIONS
+# Unverified User SQL Statements
 
 def create_unverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,
                       isPasswordReset):
