@@ -1,60 +1,51 @@
-<!-- Designs the UI Elements that apply only to webpages accessible from the customer dashboard -->
-
 {% extends "bases/website_base.html" %}
-<!-- The above line causes this page to re-use all code in website_base.html without re-writing -->
 
-<!-- Sets up the UI elements of the navigation bar -->
 {% block body %}
-<nav class="navbar navbar-expand-lg custom-navbar">
-    <button
-        class="navbar-toggler"
-        type="button"
-        data-toggle="collapse"
-        data-target="#navbar"
-    >
+
+<!-- NAV BAR -->
+<nav class="navbar navbar-expand-lg custom-navbar w-100">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar">
         <span class="navbar-toggler-icon"></span>
     </button>
+
     <div class="collapse navbar-collapse" id="navbar">
         <div class="navbar-nav">
+
             {% if nav_context == "dashboard" %}
-                <!-- Dashboard navigation -->
                 <a class="nav-item nav-link" href="/customer_dashboard">Dashboard</a>
                 <a class="nav-item nav-link" href="/select_services">Book Appointment</a>
                 <a class="nav-item nav-link" href="/view_appointments">My Appointments</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>
+
             {% elif nav_context == "select_services" %}
-                <!-- Select Services navigation -->
                 <a class="nav-item nav-link" href="/customer_dashboard">Return to Customer Dashboard</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>
+
+            {% elif nav_context == "view_appointments" %}
+                <a class="nav-item nav-link" href="/customer_dashboard">Return to Dashboard</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
+
             {% endif %}
+
         </div>
     </div>
 </nav>
 
-<!-- Sets up GUI styling for messages that are flashed to screen  -->
+<!-- FLASH MESSAGES -->
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
     {% for category, message in messages %}
-    {% if category == 'Error' %}
-    <div class="alert alert-danger alert-dismissable fade show" role="alert">
-        {{ message }}
-        <button type="button" class="close" data-dismiss="alert">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    {% else %}
-    <div class="alert alert-success alert-dismissable fade show" role="alert">
-        {{ message }}
-        <button type="button" class="close" data-dismiss="alert">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-    {% endif %}
+        <div class="alert alert-{{ 'danger' if category == 'Error' else 'success' }} alert-dismissable fade show" role="alert">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span></button>
+        </div>
     {% endfor %}
 {% endif %}
 {% endwith %}
 
-<div class="container">
+<!-- PAGE CONTENT -->
+<div class="container mt-4">
     {% block content %}{% endblock %}
 </div>
+
 {% endblock %}

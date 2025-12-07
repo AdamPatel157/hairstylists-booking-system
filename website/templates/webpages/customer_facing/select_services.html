@@ -5,6 +5,7 @@
 {% block title %}Select Services{% endblock %}
 
 {% block content %}
+
 <form method="POST">
 <div class="row mt-4">
 
@@ -15,16 +16,41 @@
         {% for category, services in servicesByCategory.items() %}
         <div class="mb-4">
             <h4><strong>{{ category }}</strong></h4>
+
+            {% if category in [
+                'Haircuts',
+                'Beard Wash and Dry',
+                'Hair Wash and Dry',
+                'Beard Styling'
+            ] %}
+                <p class="text-muted" style="margin-bottom: 6px;">Select one…</p>
+            {% endif %}
+
+            {% if category == 'Hair Colour' %}
+                <p class="text-muted" style="margin-bottom: 6px;">Select one colour…</p>
+            {% endif %}
+
+            {% if category == 'Beard Miscellaneous' %}
+                <p class="text-muted" style="margin-bottom: 6px;">Select all that apply…</p>
+            {% endif %}
+
             {% for service in services %}
-            <div class="form-check">
-                <!--suppress HtmlUnknownAttribute -->
-                <input class="form-check-input" type="checkbox" name="service" value="{{ service.serviceId }}"
-                       id="service{{ service.serviceId }}"
-                       {{ 'checked' if service.serviceId in selectedServiceIds else '' }}>
-                <label class="form-check-label" for="service{{ service.serviceId }}">
-                    {{ service.serviceName }} (£{{ service.price|round(2) }})
-                </label>
-            </div>
+                {% if service.serviceName == 'Bleach' %}
+                    <p class="text-muted" style="margin-top: 8px;">Select if necessary:</p>
+                {% endif %}
+
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="service"
+                           value="{{ service.serviceId }}"
+                           id="service{{ service.serviceId }}"
+                           {{ 'checked' if service.serviceId in selectedServiceIds else '' }}>
+
+                    <label class="form-check-label" for="service{{ service.serviceId }}">
+                        {{ service.serviceName }} (£{{ '%.2f'|format(service.price) }})
+                    </label>
+                </div>
             {% endfor %}
         </div>
         {% endfor %}
@@ -37,7 +63,7 @@
             <thead class="thead-light">
                 <tr>
                     <th>Service</th>
-                    <th>Time (min)</th>
+                    <th>Time (mins)</th>
                     <th>Price (£)</th>
                 </tr>
             </thead>
@@ -48,7 +74,7 @@
                 <tr>
                     <td>{{ service.serviceName }}</td>
                     <td>{{ service.duration }}</td>
-                    <td>{{ service.price|round(2) }}</td>
+                    <td>{{ '%.2f'|format(service.price) }}</td>
                 </tr>
                 {% set totalPrice = totalPrice + service.price %}
                 {% set totalDuration = totalDuration + service.duration %}
@@ -57,14 +83,21 @@
         </table>
 
         <p><strong>Online Booking Fee:</strong> £5.00</p>
-        <p><strong>Total Price:</strong> £{{ totalPrice|round(2) }}</p>
+        <p><strong>Total Price:</strong> £{{ '%.2f'|format(totalPrice) }}</p>
         <p><strong>Total Duration:</strong> {{ totalDuration }} minutes</p>
 
-        <button type="submit" class="btn btn-success btn-block mt-3">
-            Confirm Service Selection and proceed to Select Barber →
+        <button type="submit" name="action" value="recalculate" class="btn btn-success btn-block mt-3">
+            Recalculate Summary
         </button>
+        <br>
+        {% if summaryReady %}
+        <button type="submit" name="action" value="continue" class="btn btn-success">
+            Confirm Selection and Proceed to Select Barber ->
+        </button>
+        {% endif %}
     </div>
 
 </div>
+
 </form>
 {% endblock %}

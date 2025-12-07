@@ -384,28 +384,28 @@ def fetch_services():
 
     return servicesByCategory
 
-def get_selected_services():
-    selectedIds = session.get("selectedServiceIds", [])
-    if not selectedIds:
+def get_selected_services_from_ids(ids):
+    if not ids:
         return []
-
     conn = get_db_connection()
     cursor = conn.cursor()
-    placeholders = ",".join("?" for _ in selectedIds)
-    cursor.execute(f"""
+
+    placeholders = ",".join("?" for _ in ids)
+    query = f"""
         SELECT ServiceID, ServiceName, Duration, Price
         FROM tblService
         WHERE ServiceID IN ({placeholders})
-    """, selectedIds)
-    selected = cursor.fetchall()
+    """
+    cursor.execute(query, ids)
+    rows = cursor.fetchall()
     conn.close()
 
     return [{
-        "serviceId": sid,
-        "serviceName": user_friendly_service_names(name),
-        "duration": duration,
-        "price": price
-    } for sid, name, duration, price in selected]
+        "serviceId": row["ServiceID"],
+        "serviceName": user_friendly_service_names(row["ServiceName"]),
+        "duration": row["Duration"],
+        "price": row["Price"],
+    } for row in rows]
 
 # Parameterised SQL Statements for Barbers
 
