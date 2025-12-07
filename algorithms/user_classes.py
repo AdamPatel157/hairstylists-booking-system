@@ -1,3 +1,5 @@
+from flask_login import UserMixin
+
 # Creates the abstract 'User' superclass
 class User:
 
@@ -13,8 +15,6 @@ class User:
 
     def logout(self):
         pass
-
-from flask_login import UserMixin
 
 class Customer(UserMixin):
     # Represents a logged-in customer user

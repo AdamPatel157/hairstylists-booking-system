@@ -68,8 +68,6 @@
                 </tr>
             </thead>
             <tbody>
-                {% set totalPrice = 5.00 %}
-                {% set totalDuration = 0 %}
                 {% for service in selectedServices %}
                 <tr>
                     <td>{{ service.serviceName }}</td>
@@ -82,12 +80,18 @@
             </tbody>
         </table>
 
-        <p><strong>Online Booking Fee:</strong> £5.00</p>
-        <p><strong>Total Price:</strong> £{{ '%.2f'|format(totalPrice) }}</p>
-        <p><strong>Total Duration:</strong> {{ totalDuration }} minutes</p>
+        <p><strong>+ Online Booking Fee:</strong> £5.00</p>
 
-        <button type="submit" name="action" value="recalculate" class="btn btn-success btn-block mt-3">
-            Recalculate Summary
+        {% if summaryReady %}
+            <p><strong>Total Price:</strong> £{{ '%.2f'|format(totalPrice) }}</p>
+            <p><strong>Total Duration:</strong> {{ totalDuration }} minutes</p>
+        {% else %}
+            <p><strong>Total Price:</strong> N/A</p>
+            <p><strong>Total Duration:</strong> N/A</p>
+        {% endif %}
+
+        <button type="submit" name="action" value="calculate" class="btn btn-success btn-block mt-3">
+            Calculate Summary
         </button>
         <br>
         {% if summaryReady %}

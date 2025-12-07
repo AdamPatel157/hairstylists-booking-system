@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from flask import session
+
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
 
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
@@ -389,6 +389,8 @@ def get_selected_services_from_ids(ids):
         return []
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    ids = tuple(int(i) for i in ids)
 
     placeholders = ",".join("?" for _ in ids)
     query = f"""

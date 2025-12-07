@@ -1,13 +1,38 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, flash, redirect
 
 from flask_login import login_required, current_user
 
 from website.database_management import fetch_services, get_selected_services_from_ids
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
-
-# Allows the system to access user-related database manipulation functions
+from algorithms.appointment_classes import Appointment
 
 views = Blueprint("views", __name__)
+
+activeAppointments = {}
+# Holds Appointment objects with the current_user.customerId key
+
+# TEMPORARY HARD CODED FUNCTION UNTIL IT IS SET UP WITH SQL
+def get_all_barbers():
+    return [
+        {
+            "BarberID": 1,
+            "FirstName": "Fayaz",
+            "LastName": "",
+            "YearsOfExperience": 11
+        },
+        {
+            "BarberID": 2,
+            "FirstName": "Moosa",
+            "LastName": "",
+            "YearsOfExperience": 7
+        },
+        {
+            "BarberID": 3,
+            "FirstName": "Uwais",
+            "LastName": "",
+            "YearsOfExperience": 3
+        }
+    ]
 
 @views.route("/")
 def home():
@@ -35,78 +60,176 @@ def view_appointments():
 @views.route("/select_services", methods=["GET", "POST"])
 @login_required
 def selectServices():
-    servicesByCategory = fetch_services()  # your existing function
+    servicesByCategory = fetch_services()
 
     if request.method == "POST":
-        action = request.form.get("action")   # "recalculate" or "continue"
-        selected_ids = request.form.getlist("service")
+        action = request.form.get("action")
 
-        # Validate Select-One categories
-        single_select = {"Haircuts", "Beard Wash and Dry", "Hair Wash and Dry", "Beard Styling"}
-        errors = []
+        # If user chooses to calculate summary
+        if action == "calculate":
+            selectedIds = [int(selectedId) for selectedId in request.form.getlist("service")]
+            haircutChoices = 0
+            hairWashAndDryChoices = 0
+            hairColourChoices = 0
+            beardStylingChoices = 0
+            beardWashAndDryChoices = 0
 
-        for category, services in servicesByCategory.items():
-            if category in single_select:
-                count = sum(1 for s in services if str(s['serviceId']) in selected_ids)
-                if count > 1:
-                    errors.append(f"You may only choose one option from {category}.")
+            for service in selectedIds:
+                if int(service) == 1:
+                    haircutChoices = haircutChoices + 1
 
-        # If validation errors, stay on page
-        if errors:
-            for e in errors:
-                flash(e, "Error")
-            selectedServices = get_selected_services_from_ids(selected_ids)
-            totalPrice = 5 + sum(s["price"] for s in selectedServices)
-            totalDuration = sum(s["duration"] for s in selectedServices)
-            return render_template(
-                "webpages/customer_facing/select_services.html",
-                servicesByCategory=servicesByCategory,
-                selectedServices=selectedServices,
-                selectedServiceIds=selected_ids,
-                totalPrice=totalPrice,
-                totalDuration=totalDuration,
-                summaryReady=True,
-                nav_context="select_services"
-            )
+                if int(service) == 2:
+                    haircutChoices = haircutChoices + 1
 
-        # If user clicked "continue" → pass boolean flags to next procedure
-        if action == "continue":
-            # Build boolean flags
-            all_ids = []
-            for cat in servicesByCategory.values():
-                for s in cat:
-                    all_ids.append(str(s['serviceId']))
+                if int(service) == 3:
+                    haircutChoices = haircutChoices + 1
 
-            boolean_flags = {sid: sid in selected_ids for sid in all_ids}
+                if int(service) == 4:
+                    hairWashAndDryChoices = hairWashAndDryChoices + 1
 
-            # Call your next step
-            return proceed_to_barber_selection(boolean_flags)
+                if int(service) == 5:
+                    hairWashAndDryChoices = hairWashAndDryChoices + 1
 
-        # If user clicked "recalculate"
-        if action == "recalculate":
-            selectedServices = get_selected_services_from_ids(selected_ids)
-            totalPrice = 5 + sum(s["price"] for s in selectedServices)
-            totalDuration = sum(s["duration"] for s in selectedServices)
+                if int(service) == 6:
+                    hairWashAndDryChoices = hairWashAndDryChoices + 1
 
-            return render_template(
-                "webpages/customer_facing/select_services.html",
-                servicesByCategory=servicesByCategory,
-                selectedServices=selectedServices,
-                selectedServiceIds=selected_ids,
-                totalPrice=totalPrice,
-                totalDuration=totalDuration,
-                summaryReady=True,
-                nav_context = "select_services"
-            )
+                if int(service) == 7:
+                    hairColourChoices = hairColourChoices + 1
+
+                if int(service) == 8:
+                    hairColourChoices = hairColourChoices + 1
+
+                if int(service) == 9:
+                    hairColourChoices = hairColourChoices + 1
+
+                if int(service) == 10:
+                    hairColourChoices = hairColourChoices + 1
+
+                if int(service) == 11:
+                    hairColourChoices = hairColourChoices + 1
+
+                if int(service) == 13:
+                    beardStylingChoices = beardStylingChoices + 1
+
+                if int(service) == 14:
+                    beardStylingChoices = beardStylingChoices + 1
+
+                if int(service) == 15:
+                    beardStylingChoices = beardStylingChoices + 1
+
+                if int(service) == 16:
+                    beardStylingChoices = beardStylingChoices + 1
+
+                if int(service) == 17:
+                    beardWashAndDryChoices = beardWashAndDryChoices + 1
+
+                if int(service) == 18:
+                    beardWashAndDryChoices = beardWashAndDryChoices + 1
+
+                if int(service) == 19:
+                    beardWashAndDryChoices = beardWashAndDryChoices + 1
+
+            valid = False
+            # Service Selection Validation
+            if not selectedIds:
+                flash("You must select services before proceeding.", "Error")
+
+            elif haircutChoices > 1:
+                flash("You can only select one service from the 'Haircut' category", "Error")
+
+            elif hairWashAndDryChoices > 1:
+                flash("You can only select one service from the 'Hair Wash and Dry' category", "Error")
+
+            elif hairColourChoices > 1:
+                flash("You can only select one Hair Dye Colour", "Error")
+
+            elif beardStylingChoices > 1:
+                flash("You can only select one service from the 'Beard Styling' category", "Error")
+
+            elif beardWashAndDryChoices > 1:
+                flash("You can only select one service from the 'Beard Wash and Dry' category", "Error")
+
+            else:
+                valid = True
+
+            if valid:
+                flash("Your choices have been successfully selected. Please proceed when ready.", "Success")
+                selectedServices = get_selected_services_from_ids(service for service in selectedIds)
+                totalPrice = 5 + sum(float(service["price"]) for service in selectedServices)
+                totalDuration = sum(int(service["duration"]) for service in selectedServices)
+
+                return render_template(
+                    "webpages/customer_facing/select_services.html",
+                    servicesByCategory = servicesByCategory,
+                    selectedServices = selectedServices,
+                    selectedServiceIds = selectedIds,
+                    totalPrice = totalPrice,
+                    totalDuration = totalDuration,
+                    summaryReady = True,
+                    nav_context = "select_services"
+                )
+
+            else:
+                return render_template(
+                    "webpages/customer_facing/select_services.html",
+                    servicesByCategory = servicesByCategory,
+                    selectedServices = [],
+                    selectedServiceIds = selectedIds,
+                    totalPrice = 5,
+                    totalDuration = 0,
+                    summaryReady = False,
+                    nav_context = "select_services"
+                )
+
+        # If user wishes to proceed to next page
+        elif action == "continue":
+            selectedIds = [int(selectedId) for selectedId in request.form.getlist("service")]
+            selectedServices = get_selected_services_from_ids(service for service in selectedIds)
+
+            # Creates an Appointment object with the customer ID and selected services
+            appointment = Appointment(current_user.customerId)
+            for service in selectedServices:
+                appointment.addService(service["serviceId"], service["price"], service["duration"])
+
+            # Adds to dictionary of appointment objects
+            activeAppointments[current_user.customerId] = appointment
+
+            return redirect("/select_barber")
 
     # GET request
     return render_template(
         "webpages/customer_facing/select_services.html",
-        servicesByCategory=servicesByCategory,
-        selectedServices=[],
-        selectedServiceIds=[],
-        totalPrice=5,
-        totalDuration=0,
+        servicesByCategory = servicesByCategory,
+        selectedServices = [],
+        selectedServiceIds = [],
+        totalPrice = 5,
+        totalDuration = 0,
         summaryReady = False,
         nav_context = "select_services"
+    )
+
+
+@views.route("/select_barber", methods=["GET", "POST"])
+@login_required
+def selectBarber():
+    appointment = activeAppointments.get(current_user.customerId)
+
+    if not appointment:
+        flash("Please select services first.", "Error")
+        return redirect("/select_services")
+
+    if request.method == "POST":
+        chosenBarberId = int(request.form.get("barber"))
+        appointment.setBarberId(chosenBarberId)
+
+        # Redirect to next step (e.g. slot selection or confirmation)
+        return redirect("/select_slot")
+
+    barbers = get_all_barbers()
+
+    return render_template(
+        "webpages/customer_facing/select_barber.html",
+        barbers = barbers,
+        appointment = appointment,
+        nav_context = "select_barber"
     )

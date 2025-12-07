@@ -1,0 +1,25 @@
+{% extends "bases/customer_base.html" %}
+{% block title %}Select Barber{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><strong>Select Barber</strong></h1>
+
+<div class="row">
+    {% for barber in barbers %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h4 class="card-title">{{ barber.FirstName }}</h4>
+                <p class="card-text">Years of Experience: {{ barber.YearsOfExperience }}</p>
+                <form method="POST">
+                    <input type="hidden" name="barber" value="{{ barber.BarberID }}">
+                    <button type="submit" class="btn btn-success btn-block">
+                        Select and Proceed to Book Time Slots →
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

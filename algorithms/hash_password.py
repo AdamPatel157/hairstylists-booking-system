@@ -3,7 +3,7 @@ def hash_password(getPassword):
     # Takes each character from the user's password and converts to binary then joins them together
     binaryPassword = ""
     for character in getPassword:
-        binaryPassword = ''.join(format(ord(character), '08b'))
+        binaryPassword = binaryPassword + format(ord(character), '08b')
 
     binaryPassword += '1'
     # Appends a single '1' bit to the end of the string
