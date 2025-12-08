@@ -86,3 +86,60 @@ class Appointment:
         else:
             self.__totalPrice = self.__totalPrice + price
         self.__totalDuration = self.__totalDuration + duration
+
+class TimeSlot:
+    def __init__(self, slotId: int, barberId: int, dayOfWeek: str, startTime: str, endTime: str,
+                 weekCommencing: str, isAvailable: bool, isSelected: bool = False):
+        self.__slotId = slotId
+        self.__barberId = barberId
+        self.__dayOfWeek = dayOfWeek
+        self.__startTime = startTime
+        self.__endTime = endTime
+        self.__weekCommencing = weekCommencing
+        self.__isAvailable = isAvailable
+        self.__isSelected = isSelected
+
+    # Getters
+    def getSlotId(self):
+        return self.__slotId
+
+    def getBarberId(self):
+        return self.__barberId
+
+    def getDayOfWeek(self):
+        return self.__dayOfWeek
+
+    def getStartTime(self):
+        return self.__startTime
+
+    def getEndTime(self):
+        return self.__endTime
+
+    def getWeekCommencing(self):
+        return self.__weekCommencing
+
+    def isAvailable(self):
+        return self.__isAvailable
+
+    def isSelected(self):
+        return self.__isSelected
+
+    # Setters
+    def setSelected(self, selected: bool):
+        self.__isSelected = selected
+
+    def setAvailable(self, available: bool):
+        self.__isAvailable = available
+
+    # Methods
+    def toDict(self):
+        return {
+            "SlotID": self.__slotId,
+            "BarberID": self.__barberId,
+            "Day": self.__dayOfWeek,
+            "StartTime": self.__startTime,
+            "EndTime": self.__endTime,
+            "WeekCommencing": self.__weekCommencing,
+            "IsAvailable": self.__isAvailable,
+            "IsSelected": self.__isSelected
+        }

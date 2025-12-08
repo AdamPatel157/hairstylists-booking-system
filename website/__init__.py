@@ -22,11 +22,13 @@ def create_app():
 
     from .views import views
     from .user_redirection import userRedirection
+    from .database_management import insert_barbers
 
     app.register_blueprint(views, url_prefix="/")
     app.register_blueprint(userRedirection, url_prefix="/")
 
     create_database(app)
+    insert_barbers()
 
     loginManager = LoginManager()
     loginManager.login_view = "auth.login"

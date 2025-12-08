@@ -3,6 +3,8 @@ import os
 
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
 
+from datetime import datetime, timedelta
+
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
 def get_db_connection():
@@ -86,7 +88,9 @@ def init_db():
                        IsAdmin
                        INTEGER
                        DEFAULT
-                       0
+                       0,
+                       YearsOfExperience
+                       INTEGER
                    )
                    """)
 
@@ -411,6 +415,93 @@ def get_selected_services_from_ids(ids):
 
 # Parameterised SQL Statements for Barbers
 
+def insert_barbers():
+    barbers = [
+        (1, "Fayaz", "Gani", "adminfayaz@email.com", "1d2129c27a88edd6532254aa2397a14f889b5d139f20697d7a0a40b88861f210", 1, 11),
+        (2, "Moosa", "Gani", "barbermoosa@email.com", "6597e230212f0af1f3a0537fd39634a59b2f22d335dce4c0fe6c3ce7928762f7", 0, 7),
+        (3, "Uwais", "Gani", "barberuwais@email.com", "6e75968c94e989d4bba8164cfae98a517163f47a8ec5c45e021c1cfe98e8158b", 0, 3)
+    ]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.executemany("""
+        INSERT OR IGNORE INTO tblBarber (BarberID, FirstName, LastName, EmailAddress, HashedPassword, IsAdmin, YearsOfExperience)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, barbers)
+
+    conn.commit()
+    conn.close()
+
+
+def ensureCurrentWeekSlots():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get the latest week commencing in the DB
+    cursor.execute("SELECT MAX(WeekCommencing) FROM tblTimeSlot")
+    latestWeek = cursor.fetchone()[0]
+    conn.close()
+
+    # Calculate the current week's Sunday
+    today = datetime.today()
+    currentSunday = today - timedelta(days=today.weekday() + 1) if today.weekday() != 6 else today
+    weekCommencing = currentSunday.strftime("%Y-%m-%d")
+
+    # If no slots exist or the latest week is older, generate new ones
+    if latestWeek is None or latestWeek < weekCommencing:
+        from website.database_management import generateWeeklySlots
+        generateWeeklySlots()
+
+
+def generateWeeklySlots():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT MAX(WeekCommencing) FROM tblTimeSlot")
+    latestWeek = cursor.fetchone()[0]
+
+    today = datetime.today()
+    nextSunday = today + timedelta(days=(6 - today.weekday()))
+    weekCommencing = nextSunday.strftime("%Y-%m-%d")
+
+    if latestWeek is None or latestWeek < weekCommencing:
+        barberIds = cursor.execute("SELECT BarberID FROM tblBarber").fetchall()
+        days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
+        startHour = 10
+        endHour = 18
+        slotLength = 20
+
+        for barber in barberIds:
+            barberId = barber[0]
+            for day in days:
+                currentTime = datetime.strptime("10:00", "%H:%M")
+                endTime = datetime.strptime("18:00", "%H:%M")
+
+                while currentTime < endTime:
+                    startStr = currentTime.strftime("%H:%M")
+                    endStr = (currentTime + timedelta(minutes=slotLength)).strftime("%H:%M")
+
+                    cursor.execute("""
+                        INSERT INTO tblTimeSlot (Day, StartTime, EndTime, WeekCommencing, IsAvailable, BarberID)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (day, startStr, endStr, weekCommencing, True, barberId))
+
+                    currentTime += timedelta(minutes=slotLength)
+
+        conn.commit()
+    conn.close()
+
+
+def getAllTimeSlots():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tblTimeSlot")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
 def get_barber_by_email(email):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -434,6 +525,31 @@ def get_barber_by_id(barberId):
     conn.close()
     return barber
 
+def getAllBarbers():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT BarberID, FirstName, LastName, YearsOfExperience
+        FROM tblBarber
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Converts rows into list of dictionaries
+    barbers = []
+    for row in rows:
+        barbers.append({
+            "BarberID": row[0],
+            "FirstName": row[1],
+            "LastName": row[2],
+            "YearsOfExperience": row[3]
+        })
+
+    for row in rows:
+        print(row)
+
+    return barbers
 
 def update_barber_password(email, newHashedPassword):
     conn = get_db_connection()
@@ -463,7 +579,6 @@ def create_unverified(firstName, middleName, lastName, email, hashedPassword, ph
     return unverifiedId
 
 def get_unverified_by_id(unverifiedId, isPasswordReset=None):
-    # Retrieves unverified record, optionally filtered by reset status
     conn = get_db_connection()
     cursor = conn.cursor()
     if isPasswordReset is not None:

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect
 
 from flask_login import login_required, current_user
 
-from website.database_management import fetch_services, get_selected_services_from_ids
+from website.database_management import fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
 from algorithms.appointment_classes import Appointment
 
@@ -10,29 +10,6 @@ views = Blueprint("views", __name__)
 
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
-
-# TEMPORARY HARD CODED FUNCTION UNTIL IT IS SET UP WITH SQL
-def get_all_barbers():
-    return [
-        {
-            "BarberID": 1,
-            "FirstName": "Fayaz",
-            "LastName": "",
-            "YearsOfExperience": 11
-        },
-        {
-            "BarberID": 2,
-            "FirstName": "Moosa",
-            "LastName": "",
-            "YearsOfExperience": 7
-        },
-        {
-            "BarberID": 3,
-            "FirstName": "Uwais",
-            "LastName": "",
-            "YearsOfExperience": 3
-        }
-    ]
 
 @views.route("/")
 def home():
@@ -52,6 +29,13 @@ def customer_dashboard():
 @views.route("/view_appointments")
 @login_required
 def view_appointments():
+    ensureCurrentWeekSlots()
+    timeSlots = getAllTimeSlots()
+
+    # Temporary debug print
+    for slot in timeSlots:
+        print(dict(slot))
+
     return render_template(
         "webpages/customer_facing/view_appointments.html",
         nav_context="dashboard")
@@ -241,11 +225,12 @@ def selectBarber():
     if request.method == "POST":
         chosenBarberId = int(request.form.get("barber"))
         appointment.setBarberId(chosenBarberId)
+        ensureCurrentWeekSlots()
 
         # Redirect to next step (e.g. slot selection or confirmation)
         return redirect("/select_slot")
 
-    barbers = get_all_barbers()
+    barbers = getAllBarbers()
 
     return render_template(
         "webpages/customer_facing/select_barber.html",
