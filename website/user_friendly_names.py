@@ -26,7 +26,7 @@ def user_friendly_category_names(categoryName):
     mapping = {
         "Haircuts": "Haircuts",
         "HairWashAndDry": "Hair Wash and Dry",
-        "HairColour": "Hair Colour",
+        "HairColour": "Hair Dye",
         "BeardStyling": "Beard Styling",
         "BeardWashAndDry": "Beard Wash and Dry",
         "BeardMiscellaneous": "Beard Miscellaneous"

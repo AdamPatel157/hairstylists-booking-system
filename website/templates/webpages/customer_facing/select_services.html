@@ -45,12 +45,12 @@
                            name="service"
                            value="{{ service.serviceId }}"
                            id="service{{ service.serviceId }}"
-                           {{ 'checked' if service.serviceId in selectedServiceIds else '' }}>
-
+                           {% if service.serviceId in selectedServiceIds %}checked{% endif %}
+                           {% if summaryReady %}disabled{% endif %}>
                     <label class="form-check-label" for="service{{ service.serviceId }}">
-                        {{ service.serviceName }} (£{{ '%.2f'|format(service.price) }})
+                            {{ service.serviceName }} (£{{ '%.2f'|format(service.price) }})
                     </label>
-                </div>
+                    </div>
             {% endfor %}
         </div>
         {% endfor %}
@@ -98,6 +98,13 @@
         <button type="submit" name="action" value="continue" class="btn btn-success">
             Confirm Selection and Proceed to Select Barber ->
         </button>
+        {% endif %}
+        <br>
+        {% if summaryReady %}
+        <form method="POST">
+            <input type="hidden" name="action" value="reset">
+            <button type="submit" class="btn btn-warning mt-3">Reset Selection</button>
+        </form>
         {% endif %}
     </div>
 

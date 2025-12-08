@@ -150,7 +150,14 @@ def selectServices():
                 flash("You can only select one service from the 'Beard Wash and Dry' category", "Error")
 
             else:
-                valid = True
+                selectedServices = get_selected_services_from_ids(service for service in selectedIds)
+                timeDuration = sum(int(service["duration"]) for service in selectedServices)
+
+                if timeDuration < 14:
+                    flash("You have not selected enough services for the minimum time requirement of an appointment.",
+                          "Error")
+                else:
+                    valid = True
 
             if valid:
                 flash("Your choices have been successfully selected. Please proceed when ready.", "Success")
@@ -195,6 +202,19 @@ def selectServices():
             activeAppointments[current_user.customerId] = appointment
 
             return redirect("/select_barber")
+
+        # If user wishes to re-choose options
+        elif action == "reset":
+            return render_template(
+                "webpages/customer_facing/select_services.html",
+                servicesByCategory=servicesByCategory,
+                selectedServices=[],
+                selectedServiceIds=[],
+                totalPrice=5,
+                totalDuration=0,
+                summaryReady=False,
+                nav_context="select_services"
+            )
 
     # GET request
     return render_template(
