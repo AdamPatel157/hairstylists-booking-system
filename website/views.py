@@ -2,9 +2,9 @@ from flask import Blueprint, render_template, request, flash, redirect
 
 from flask_login import login_required, current_user
 
-from website.database_management import fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots
+from website.database_management import fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, get_barber_by_id
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
-from algorithms.appointment_classes import Appointment
+from algorithms.appointment_classes import Appointment, TimeSlot
 
 views = Blueprint("views", __name__)
 
@@ -29,12 +29,6 @@ def customer_dashboard():
 @views.route("/view_appointments")
 @login_required
 def view_appointments():
-    ensureCurrentWeekSlots()
-    timeSlots = getAllTimeSlots()
-
-    # Temporary debug print
-    for slot in timeSlots:
-        print(dict(slot))
 
     return render_template(
         "webpages/customer_facing/view_appointments.html",
@@ -227,8 +221,7 @@ def selectBarber():
         appointment.setBarberId(chosenBarberId)
         ensureCurrentWeekSlots()
 
-        # Redirect to next step (e.g. slot selection or confirmation)
-        return redirect("/select_slot")
+        return redirect("/select_time_slot")
 
     barbers = getAllBarbers()
 
@@ -237,4 +230,69 @@ def selectBarber():
         barbers = barbers,
         appointment = appointment,
         nav_context = "select_barber"
+    )
+
+
+@views.route("/select_time_slot", methods=["GET", "POST"])
+@login_required
+def selectSlot():
+    appointment = activeAppointments.get(current_user.customerId)
+
+    if not appointment:
+        flash("Please select services first.", "Error")
+        return redirect("/select_services")
+
+    ensureCurrentWeekSlots()
+
+    # Constants
+    days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
+    timeIntervals = [f"{hour:02d}:{minute:02d}" for hour in range(10, 18) for minute in (0, 20, 40)]
+    requiredSlotCount = appointment.getTotalDuration() // 20
+
+    # Get barber name
+    barber = get_barber_by_id(appointment.getBarberId())
+    barberName = f"{barber['FirstName']} {barber['LastName']}"
+
+    # Get all slots for this barber and week
+    allSlots = getAllTimeSlots()
+    slotObjects = []
+    slotMap = {}
+
+    for row in allSlots:
+        if row["BarberID"] == appointment.getBarberId():
+            slot = TimeSlot(
+                slotId=row["SlotID"],
+                barberId=row["BarberID"],
+                dayOfWeek=row["Day"],
+                startTime=row["StartTime"],
+                endTime=row["EndTime"],
+                weekCommencing=row["WeekCommencing"],
+                isAvailable=bool(row["IsAvailable"])
+            )
+            slotObjects.append(slot)
+            slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
+
+    # Get week commencing from any slot (they all share it)
+    weekCommencing = slotObjects[0].getWeekCommencing() if slotObjects else "Unknown"
+
+    # Handle POST
+    if request.method == "POST":
+        selectedSlotIds = request.form.getlist("selectedSlots")
+        if len(selectedSlotIds) != requiredSlotCount:
+            flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
+        else:
+            for slotId in selectedSlotIds:
+                appointment.addSlot(int(slotId))
+            return redirect("/confirm_appointment")
+
+    return render_template(
+        "webpages/customer_facing/select_time_slot.html",
+        appointment=appointment,
+        barberName=barberName,
+        weekCommencing=weekCommencing,
+        requiredSlotCount=requiredSlotCount,
+        days=days,
+        timeIntervals=timeIntervals,
+        slotMap=slotMap,
+        nav_context="select_time_slot"
     )

@@ -27,9 +27,10 @@
             {% elif nav_context == "select_barber" %}
                 <a class="nav-item nav-link" href="/select_services">Return to Select Services</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>
-
+            {% elif nav_context == "select_time_slot" %}
+                <a class="nav-item nav-link" href="/select_barber">Return to Select Barber</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
             {% endif %}
-
         </div>
     </div>
 </nav>

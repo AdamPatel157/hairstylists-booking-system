@@ -1,0 +1,136 @@
+{% extends "bases/full_width_slots_base.html" %}
+{% block title %}Select Time Slots{% endblock %}
+{% block content %}
+
+<div class="full-width">
+<br>
+    <h1 class="mb-4"><strong>Select Time Slots</strong></h1>
+
+    <!-- Info row with left and right sections -->
+    <div class="info-row">
+        <div class="info-left">
+            <p><strong>Time Duration:</strong> {{ appointment.getTotalDuration() }} minutes</p>
+            <p><strong>Number of Time Slots Required:</strong> {{ requiredSlotCount }}</p>
+            <p><strong>Week Commencing:</strong> {{ weekCommencing }}</p>
+            <p><strong>Schedule of:</strong> {{ barberName }}</p>
+        </div>
+        <div class="info-right">
+            <div class="slot-key">
+                <span class="slot available">Available</span>
+                <span class="slot unavailable">Unavailable</span>
+                <span class="slot selected">Selected</span>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST">
+        <table class="slot-grid">
+            <thead>
+                <tr>
+                    <th>Day / Time</th>
+                    {% for time in timeIntervals %}
+                        <th>{{ time }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr>
+                    <td><strong>{{ day }}</strong></td>
+                    {% for time in timeIntervals %}
+                        {% set slot = slotMap.get((day, time)) %}
+                        <td>
+                            {% if slot %}
+                                {% if slot.isAvailable() %}
+                                    <div class="slot-cell available">
+                                        <input type="checkbox" name="selectedSlots" value="{{ slot.getSlotId() }}"
+                                               {% if slot.isSelected() %}checked{% endif %}>
+                                    </div>
+                                {% else %}
+                                    <div class="slot-cell unavailable">
+                                        <input type="checkbox" disabled>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="slot-cell unavailable">
+                                    <input type="checkbox" disabled>
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+
+
+        <div class="slot-actions mt-3">
+            <button type="submit" name="action" value="confirm" class="btn btn-success">
+                Confirm Time Slots and Proceed →
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.full-width {
+    margin: 0;
+    padding: 0 10px;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Flex row for info */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+.info-left p, .info-right p {
+    margin: 0 0 5px;
+}
+
+/* Slot grid styling */
+.slot-grid {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+}
+.slot-grid th, .slot-grid td {
+    border: 1px solid #ccc;
+    text-align: center;
+    padding: 6px;
+    min-width: 60px;
+}
+
+/* Slot cells */
+.slot-cell {
+    padding: 10px;
+}
+.slot-cell input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+/* Colours */
+.slot-cell.available { background-color: #c8f7c5; }
+.slot-cell.unavailable { background-color: #f7c5c5; }
+.slot-cell input[type="checkbox"]:checked {
+    background-color: #f7f3c5;
+}
+
+/* Legend */
+.slot-key span {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+.slot-key .available { background-color: #c8f7c5; }
+.slot-key .unavailable { background-color: #f7c5c5; }
+.slot-key .selected { background-color: #f7f3c5; }
+</style>
+
+{% endblock %}

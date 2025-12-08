@@ -316,6 +316,7 @@ def create_customer(firstName, middleName, lastName, email, hashedPassword, phon
     conn.close()
     return customerId
 
+
 def get_customer_by_email(email):
     # Retrieves customer by email using parameterized query
     # Returns None if not found, otherwise returns a dictionary-like row
