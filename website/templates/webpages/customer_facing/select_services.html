@@ -47,10 +47,16 @@
                            id="service{{ service.serviceId }}"
                            {% if service.serviceId in selectedServiceIds %}checked{% endif %}
                            {% if summaryReady %}disabled{% endif %}>
+
+                    <!-- Hidden input ensures disabled selections are still submitted -->
+                    {% if summaryReady and service.serviceId in selectedServiceIds %}
+                        <input type="hidden" name="service" value="{{ service.serviceId }}">
+                    {% endif %}
+
                     <label class="form-check-label" for="service{{ service.serviceId }}">
-                            {{ service.serviceName }} (£{{ '%.2f'|format(service.price) }})
+                        {{ service.serviceName }} (£{{ '%.2f'|format(service.price) }})
                     </label>
-                    </div>
+                </div>
             {% endfor %}
         </div>
         {% endfor %}
@@ -109,6 +115,6 @@
     </div>
 
 </div>
-
 </form>
+
 {% endblock %}

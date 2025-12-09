@@ -169,14 +169,18 @@ def selectServices():
         # If user wishes to proceed to next page
         elif action == "continue":
             selectedIds = [int(selectedId) for selectedId in request.form.getlist("service")]
-            selectedServices = get_selected_services_from_ids(service for service in selectedIds)
 
-            # Creates an Appointment object with the customer ID and selected services
+            selectedServices = get_selected_services_from_ids(selectedIds)
+
             appointment = Appointment(current_user.customerId)
+            print(request.form)
             for service in selectedServices:
-                appointment.addService(service["serviceId"], service["price"], service["duration"])
+                appointment.addService(
+                    serviceId=service["serviceId"],
+                    price=float(service["price"]),
+                    duration=int(service["duration"])
+                )
 
-            # Adds to dictionary of appointment objects
             activeAppointments[current_user.customerId] = appointment
 
             return redirect("/select_barber")
@@ -244,16 +248,20 @@ def selectSlot():
 
     ensureCurrentWeekSlots()
 
-    # Constants
     days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
     timeIntervals = [f"{hour:02d}:{minute:02d}" for hour in range(10, 18) for minute in (0, 20, 40)]
-    requiredSlotCount = appointment.getTotalDuration() // 20
 
-    # Get barber name
+    # If the required duration is under 10 mins over the slots, a new slot is not required
+    duration = appointment.getTotalDuration()
+    remainder = duration % 20
+    if remainder < 10:
+        requiredSlotCount = duration // 20
+    else:
+        requiredSlotCount = (duration // 20) + 1
+
     barber = get_barber_by_id(appointment.getBarberId())
     barberName = f"{barber['FirstName']} {barber['LastName']}"
 
-    # Get all slots for this barber and week
     allSlots = getAllTimeSlots()
     slotObjects = []
     slotMap = {}
@@ -272,10 +280,9 @@ def selectSlot():
             slotObjects.append(slot)
             slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
 
-    # Get week commencing from any slot (they all share it)
+    # Get week commencing from any slot
     weekCommencing = slotObjects[0].getWeekCommencing() if slotObjects else "Unknown"
 
-    # Handle POST
     if request.method == "POST":
         selectedSlotIds = request.form.getlist("selectedSlots")
         if len(selectedSlotIds) != requiredSlotCount:
