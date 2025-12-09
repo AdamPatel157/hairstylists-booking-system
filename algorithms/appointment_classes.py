@@ -9,7 +9,7 @@ class Appointment:
         self.__slotIds = []
         self.__totalPrice = 0.0
         self.__totalDuration = 0
-        self.__selectionLocked = False  # new internal flag
+        self.__selectionLocked = False
 
     # Getters
 

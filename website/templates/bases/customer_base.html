@@ -33,6 +33,13 @@
             {% elif nav_context == "note_for_barber" %}
                 <a class="nav-item nav-link" href="/select_time_slot">Return to Select Time Slot</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>
+            {% elif nav_context == "confirm_booking" %}
+                <a class="nav-item nav-link" href="/note_for_barber">Return to Leave Note</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
+            {% elif nav_context == "booking_confirmed" %}
+                <a class="nav-item nav-link" href="/customer_dashboard">Dashboard</a>
+                <a class="nav-item nav-link" href="/view_appointments">My Appointments</a>
+                <a class="nav-item nav-link" href="/logout">Logout</a>
             {% endif %}
         </div>
     </div>

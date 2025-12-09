@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect
-
 from flask_login import login_required, current_user
+
+from datetime import datetime, timedelta
 
 from website.database_management import fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, get_barber_by_id
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
@@ -10,6 +11,15 @@ views = Blueprint("views", __name__)
 
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
+
+def getActualDate(weekCommencing: str, dayAbbrev: str) -> str:
+    baseDate = datetime.strptime(weekCommencing, "%Y-%m-%d")
+    offsets = {
+        "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6
+    }
+    offsetDays = offsets.get(dayAbbrev, 0)
+    actualDate = baseDate + timedelta(days=offsetDays)
+    return actualDate.strftime("%d-%m-%Y")
 
 def calculateRequiredSlots(duration: int):
     remainder = duration % 20
@@ -411,10 +421,87 @@ def noteForBarber():
             else:
                 appointment.setNoteForBarber(noteInput)
                 flash("Note saved successfully.", "Success")
-                return redirect("/confirm_appointment")
+                return redirect("/confirm_booking")
 
     return render_template(
         "webpages/customer_facing/note_for_barber.html",
         noteForBarber = barberNote,
         nav_context = "note_for_barber"
+    )
+
+
+@views.route("/confirm_booking", methods=["GET", "POST"])
+@login_required
+def confirmBooking():
+    appointment = activeAppointments.get(current_user.customerId)
+
+    if not appointment or not appointment.isSelectionLocked():
+        flash("Please complete your slot selection first.", "Error")
+        return redirect("/select_time_slot")
+
+    serviceIds = appointment.getServiceIds()
+    slotIds = appointment.getSlotIds()
+    barberId = appointment.getBarberId()
+
+    if not serviceIds or not slotIds or not barberId:
+        flash("Incomplete appointment details.", "Error")
+        return redirect("/select_services")
+
+    selectedServices = get_selected_services_from_ids(serviceIds)
+
+    barber = get_barber_by_id(barberId)
+    barberName = f"{barber['FirstName']} {barber['LastName']}"
+
+    allSlots = getAllTimeSlots()
+    slotDetails = [row for row in allSlots if row["SlotID"] in slotIds]
+
+    # Sorts slots by start time
+    slotDetails.sort(key=lambda s: s["StartTime"])
+
+    weekCommencing = slotDetails[0]["WeekCommencing"]
+    selectedDay = slotDetails[0]["Day"]
+    selectedDate = getActualDate(weekCommencing, selectedDay)
+
+    startTime = slotDetails[0]["StartTime"]
+    endTime = slotDetails[-1]["EndTime"]
+
+    totalPrice = appointment.getTotalPrice()
+    barberNote = appointment.getNoteForBarber()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "confirm":
+            appointment.setDate(selectedDate)
+            flash("Booking confirmed successfully.", "Success")
+            return redirect(f"/booking_confirmed?ref={appointment.getBookingReference()}")
+
+    return render_template(
+        "webpages/customer_facing/confirm_booking.html",
+        appointment = appointment,
+        selectedServices = selectedServices,
+        selectedDate = selectedDate,
+        startTime = startTime,
+        endTime = endTime,
+        barberName = barberName,
+        totalPrice = totalPrice,
+        noteForBarber = barberNote,
+        nav_context = "confirm_booking"
+    )
+
+@views.route("/booking_confirmed")
+@login_required
+def bookingConfirmed():
+    bookingReference = request.args.get("ref", type=int)
+
+    if not bookingReference:
+        return render_template(
+            "webpages/customer_facing/booking_confirmed.html",
+            bookingReference="Unavailable",
+            nav_context="booking_confirmed"
+        )
+
+    return render_template(
+        "webpages/customer_facing/booking_confirmed.html",
+        bookingReference=bookingReference,
+        nav_context="booking_confirmed"
     )

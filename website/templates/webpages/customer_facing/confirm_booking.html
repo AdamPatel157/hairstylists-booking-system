@@ -1,0 +1,74 @@
+{% extends "bases/customer_base.html" %}
+{% block title %}Confirm Booking{% endblock %}
+{% block content %}
+
+<div class="full-width">
+    <br>
+    <h1 class="mb-4"><strong>Confirm Booking</strong></h1>
+
+    <form method="POST">
+        <div class="row">
+            <!-- Left Column: Services and Note -->
+            <div class="col-md-7">
+                <h4><strong>Selected Services</strong></h4>
+                <table class="table table-bordered mt-3">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Service</th>
+                            <th>Price (£)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in selectedServices %}
+                        <tr>
+                            <td>{{ service.serviceName }}</td>
+                            <td>{{ '%.2f'|format(service.price) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p><strong>+ Online Booking Fee:</strong> £5.00</p>
+
+                <!-- Additional Note Section -->
+                <div class="note-box mt-4 p-3">
+                    <h5><strong>Additional Note</strong></h5>
+                    <textarea class="form-control" rows="6" readonly>{{ noteForBarber if noteForBarber else "None" }}</textarea>
+                </div>
+            </div>
+
+            <!-- Right Column: Appointment Details -->
+            <div class="col-md-5">
+                <div class="details-box p-3">
+                    <h4><strong>Appointment Details</strong></h4>
+                    <p><strong>Selected Date:</strong> {{ selectedDate }}</p>
+                    <p><strong>Start Time:</strong> {{ startTime }}</p>
+                    <p><strong>End Time:</strong> {{ endTime }}</p>
+                    <p><strong>Selected Barber:</strong> {{ barberName }}</p>
+                    <p><strong>Total Price:</strong> £{{ '%.2f'|format(totalPrice) }}</p>
+                    <p class="text-muted mt-3">Please note: Start and End Times are estimates</p>
+                    <p class="text-muted">Only cash payments are accepted in-store</p>
+
+                    <div class="text-right mt-4">
+                        <button type="submit" name="action" value="confirm" class="btn btn-success">
+                            Confirm Booking →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<br>
+<style>
+.details-box, .note-box {
+    background-color: #D3D3D3;
+    border-radius: 6px;
+}
+textarea.form-control {
+    resize: none;
+    font-size: 15px;
+    background-color: #f9f9f9;
+}
+</style>
+
+{% endblock %}

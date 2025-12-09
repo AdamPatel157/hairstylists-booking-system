@@ -1,0 +1,28 @@
+{% extends "bases/customer_base.html" %}
+{% block title %}Booking Confirmed{% endblock %}
+{% block content %}
+
+<div class="confirmation-wrapper text-center mt-5">
+    <h1 class="mb-4 text-success"><strong>Your booking has been confirmed!</strong></h1>
+
+    <p class="lead">Your reference number is:</p>
+    <h2 class="mb-4"><strong>{{ bookingReference }}</strong></h2>
+
+    <p>You will have been sent an email with a copy of your booking details.</p>
+
+    <div class="mt-5">
+        <a href="/customer_dashboard" class="btn btn-success btn-lg">Return to Customer Dashboard</a>
+    </div>
+</div>
+
+<style>
+.confirmation-wrapper {
+    background-color: #f8f9fa;
+    padding: 40px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: auto;
+}
+</style>
+
+{% endblock %}
