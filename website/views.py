@@ -364,7 +364,7 @@ def selectSlot():
             if not appointment.isSelectionLocked() or not appointment.getSlotIds():
                 flash("Please confirm your slots before proceeding.", "Error")
             else:
-                return redirect("/confirm_appointment")
+                return redirect("/note_for_barber")
 
         elif action == "reset":
             appointment.unlockSelection()
@@ -377,9 +377,6 @@ def selectSlot():
             flash("Selection has been reset.", "Success")
             selectionLocked = False
 
-        else:
-            flash("Unknown action.", "Error")
-
     return render_template(
         "webpages/customer_facing/select_time_slot.html",
         appointment = appointment,
@@ -391,4 +388,33 @@ def selectSlot():
         slotMap = slotMap,
         selectionLocked = selectionLocked,
         nav_context = "select_time_slot"
+    )
+
+@views.route("/note_for_barber", methods=["GET", "POST"])
+@login_required
+def noteForBarber():
+    appointment = activeAppointments.get(current_user.customerId)
+
+    if not appointment:
+        flash("Please select services first.", "Error")
+        return redirect("/select_services")
+
+    barberNote = appointment.getNoteForBarber()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        noteInput = request.form.get("noteForBarber", "").strip()
+
+        if action == "confirm":
+            if len(noteInput) > 250:
+                flash("Note must not exceed 250 characters.", "Error")
+            else:
+                appointment.setNoteForBarber(noteInput)
+                flash("Note saved successfully.", "Success")
+                return redirect("/confirm_appointment")
+
+    return render_template(
+        "webpages/customer_facing/note_for_barber.html",
+        noteForBarber = barberNote,
+        nav_context = "note_for_barber"
     )

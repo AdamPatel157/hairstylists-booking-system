@@ -1,0 +1,26 @@
+{% extends "bases/customer_base.html" %}
+{% block title %}Leave a Note{% endblock %}
+{% block content %}
+
+<div class="full-width">
+    <br>
+    <h1 class="mb-4"><strong>Leave a Note</strong></h1>
+
+    <form method="POST">
+        <p>If you would like to provide your barber with further details for your appointment, please enter them below (Optional):</p>
+
+        <textarea name="noteForBarber"
+                  rows="5"
+                  maxlength="250"
+                  class="form-control mb-3"
+                  placeholder="Type your note here...">{{ noteForBarber }}</textarea>
+
+        <div class="text-right">
+            <button type="submit" name="action" value="confirm" class="btn btn-success">
+                Confirm Note and Proceed →
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
