@@ -9,6 +9,7 @@ class Appointment:
         self.__slotIds = []
         self.__totalPrice = 0.0
         self.__totalDuration = 0
+        self.__selectionLocked = False  # new internal flag
 
     # Getters
 
@@ -39,6 +40,9 @@ class Appointment:
     def getTotalDuration(self):
         return self.__totalDuration
 
+    def isSelectionLocked(self):
+        return self.__selectionLocked
+
     # Setters
 
     def setBarberId(self, barberId: int):
@@ -62,8 +66,16 @@ class Appointment:
     def addSlot(self, slotId: int):
         self.__slotIds.append(slotId)
 
+    def clearSlots(self):
+        self.__slotIds.clear()
+
+    def lockSelection(self):
+        self.__selectionLocked = True
+
+    def unlockSelection(self):
+        self.__selectionLocked = False
+
     def toDatabaseDict(self):
-        # Prepares a dictionary for adding values to tblAppointment
         return {
             "BookingReference": self.__bookingReference,
             "CustomerID": self.__customerId,
@@ -73,19 +85,17 @@ class Appointment:
         }
 
     def getAppointmentServices(self):
-        # Returns a list of tuples for tblAppointmentServices
         return [(self.__bookingReference, sid) for sid in self.__serviceIds]
 
     def getAppointmentSlots(self):
-        # Returns a list of tuples for tblAppointmentSlots
         return [(slotId, self.__bookingReference) for slotId in self.__slotIds]
 
     def _recalculateTotals(self, price: float, duration: int, baseFee: float):
         if len(self.__serviceIds) == 1:
             self.__totalPrice = baseFee + price
         else:
-            self.__totalPrice = self.__totalPrice + price
-        self.__totalDuration = self.__totalDuration + duration
+            self.__totalPrice += price
+        self.__totalDuration += duration
 
 class TimeSlot:
     def __init__(self, slotId: int, barberId: int, dayOfWeek: str, startTime: str, endTime: str,

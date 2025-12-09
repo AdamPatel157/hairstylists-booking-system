@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="full-width">
-<br>
+    <br>
     <h1 class="mb-4"><strong>Select Time Slots</strong></h1>
 
     <!-- Info row with left and right sections -->
@@ -23,6 +23,7 @@
         </div>
     </div>
 
+    <!-- Main form -->
     <form method="POST">
         <table class="slot-grid">
             <thead>
@@ -36,24 +37,39 @@
             <tbody>
                 {% for day in days %}
                 <tr>
-                    <td><strong>{{ day }}</strong></td>
+                    <td class="day-header"><strong>{{ day }}</strong></td>
                     {% for time in timeIntervals %}
                         {% set slot = slotMap.get((day, time)) %}
-                        <td>
+                        {% set isUnavailable = (not slot or not slot.isAvailable()) %}
+                        {% set isSelected = slot and slot.isSelected() %}
+                        <td class="
+                            {% if isUnavailable %}cell-unavailable{% elif isSelected %}cell-selected{% else %}cell-available{% endif %}
+                        ">
                             {% if slot %}
-                                {% if slot.isAvailable() %}
-                                    <div class="slot-cell available">
-                                        <input type="checkbox" name="selectedSlots" value="{{ slot.getSlotId() }}"
-                                               {% if slot.isSelected() %}checked{% endif %}>
+                                {% if isUnavailable %}
+                                    <!-- Unavailable: red cell, no interactive checkbox -->
+                                    <div class="cell-content">
+                                        <!-- Hidden checkbox to preserve layout focus, but entirely invisible and disabled -->
+                                        <input type="checkbox" disabled class="hidden-checkbox">
                                     </div>
                                 {% else %}
-                                    <div class="slot-cell unavailable">
-                                        <input type="checkbox" disabled>
+                                    <div class="cell-content">
+                                        {% if selectionLocked %}
+                                            <!-- When locked, make invisible and non-interactive -->
+                                            <input type="checkbox" class="hidden-checkbox" disabled>
+                                        {% else %}
+                                            <input type="checkbox"
+                                                   name="selectedSlots"
+                                                   value="{{ slot.getSlotId() }}"
+                                                   class="slot-checkbox"
+                                                   {% if isSelected %}checked{% endif %}>
+                                        {% endif %}
                                     </div>
                                 {% endif %}
                             {% else %}
-                                <div class="slot-cell unavailable">
-                                    <input type="checkbox" disabled>
+                                <!-- No slot object: treat as unavailable -->
+                                <div class="cell-content">
+                                    <input type="checkbox" disabled class="hidden-checkbox">
                                 </div>
                             {% endif %}
                         </td>
@@ -63,17 +79,27 @@
             </tbody>
         </table>
 
-
-
         <div class="slot-actions mt-3">
-            <button type="submit" name="action" value="confirm" class="btn btn-success">
-                Confirm Time Slots and Proceed →
-            </button>
+            {% if not selectionLocked %}
+                <button type="submit" name="action" value="validate" class="btn btn-success btn-block mt-3">
+                    Confirm Slots
+                </button>
+            {% endif %}
+
+            {% if selectionLocked %}
+                <button type="submit" name="action" value="proceed" class="btn btn-success">
+                    Confirm Changes and Proceed →
+                </button>
+                <button type="submit" name="action" value="reset" class="btn btn-warning ml-2">
+                    Reset Selection
+                </button>
+            {% endif %}
         </div>
     </form>
 </div>
 
 <style>
+
 .full-width {
     margin: 0;
     padding: 0 10px;
@@ -81,7 +107,6 @@
     width: 100% !important;
 }
 
-/* Flex row for info */
 .info-row {
     display: flex;
     justify-content: space-between;
@@ -92,36 +117,47 @@
     margin: 0 0 5px;
 }
 
-/* Slot grid styling */
 .slot-grid {
     border-collapse: collapse;
     width: 100%;
     margin-top: 20px;
+    table-layout: fixed;
 }
 .slot-grid th, .slot-grid td {
     border: 1px solid #ccc;
     text-align: center;
-    padding: 6px;
+    padding: 0; /* let the cell-content define spacing */
     min-width: 60px;
 }
-
-/* Slot cells */
-.slot-cell {
-    padding: 10px;
+.day-header {
+    padding: 6px;
 }
-.slot-cell input[type="checkbox"] {
+
+.cell-available { background-color: #c8f7c5; }
+.cell-unavailable { background-color: #f7c5c5; }
+.cell-selected { background-color: #f7f3c5; }
+
+.cell-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px; /* visual touch target height */
+    padding: 6px;     /* small breathing room */
+}
+
+.slot-checkbox {
     width: 20px;
     height: 20px;
 }
 
-/* Colours */
-.slot-cell.available { background-color: #c8f7c5; }
-.slot-cell.unavailable { background-color: #f7c5c5; }
-.slot-cell input[type="checkbox"]:checked {
-    background-color: #f7f3c5;
+.hidden-checkbox {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
 }
 
-/* Legend */
 .slot-key span {
     display: inline-block;
     margin-right: 10px;

@@ -11,6 +11,40 @@ views = Blueprint("views", __name__)
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
 
+def calculateRequiredSlots(duration: int):
+    remainder = duration % 20
+    return duration // 20 if remainder < 10 else (duration // 20) + 1
+
+def validateSlots(slotIds, idToSlot):
+    # Must have at least one slot
+    if not slotIds:
+        return False
+
+    # Resolve slots
+    slots = [idToSlot.get(int(sid)) for sid in slotIds]
+    if any(s is None for s in slots):
+        return False
+
+    # All on same day
+    day = slots[0].getDayOfWeek()
+    if any(s.getDayOfWeek() != day for s in slots):
+        return False
+
+    # Sorts by start time
+    def toMinutes(t: str):
+        hh, mm = t.split(":")
+        result = (int(hh) * 60) + int(mm)
+        return result
+
+    slots.sort(key = lambda s: toMinutes(s.getStartTime()))
+
+    # Check each consecutive pair differs by exactly 20 minutes
+    for i in range(1, len(slots)):
+        if toMinutes(slots[i].getStartTime()) - toMinutes(slots[i - 1].getStartTime()) != 20:
+            return False
+
+    return True
+
 @views.route("/")
 def home():
     return render_template("index.html")
@@ -113,19 +147,19 @@ def selectServices():
                 flash("You must select services before proceeding.", "Error")
 
             elif haircutChoices > 1:
-                flash("You can only select one service from the 'Haircut' category", "Error")
+                flash("You can only select one service from the Haircut category", "Error")
 
             elif hairWashAndDryChoices > 1:
-                flash("You can only select one service from the 'Hair Wash and Dry' category", "Error")
+                flash("You can only select one service from the Hair Wash and Dry category", "Error")
 
             elif hairColourChoices > 1:
                 flash("You can only select one Hair Dye Colour", "Error")
 
             elif beardStylingChoices > 1:
-                flash("You can only select one service from the 'Beard Styling' category", "Error")
+                flash("You can only select one service from the Beard Styling category", "Error")
 
             elif beardWashAndDryChoices > 1:
-                flash("You can only select one service from the 'Beard Wash and Dry' category", "Error")
+                flash("You can only select one service from the Beard Wash and Dry category", "Error")
 
             else:
                 selectedServices = get_selected_services_from_ids(service for service in selectedIds)
@@ -240,6 +274,7 @@ def selectBarber():
 @views.route("/select_time_slot", methods=["GET", "POST"])
 @login_required
 def selectSlot():
+
     appointment = activeAppointments.get(current_user.customerId)
 
     if not appointment:
@@ -249,57 +284,111 @@ def selectSlot():
     ensureCurrentWeekSlots()
 
     days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
-    timeIntervals = [f"{hour:02d}:{minute:02d}" for hour in range(10, 18) for minute in (0, 20, 40)]
 
-    # If the required duration is under 10 mins over the slots, a new slot is not required
+    timeIntervals = []
+
+    for hour in range(10, 18):
+        for minute in (0, 20, 40):
+            formattedTime = f"{hour:02d}:{minute:02d}"
+            timeIntervals.append(formattedTime)
+
     duration = appointment.getTotalDuration()
-    remainder = duration % 20
-    if remainder < 10:
-        requiredSlotCount = duration // 20
-    else:
-        requiredSlotCount = (duration // 20) + 1
+    requiredSlotCount = calculateRequiredSlots(duration)
 
     barber = get_barber_by_id(appointment.getBarberId())
-    barberName = f"{barber['FirstName']} {barber['LastName']}"
+    barberName = f"{barber["FirstName"]} {barber["LastName"]}"
 
+    # Builds slots for the barber
     allSlots = getAllTimeSlots()
     slotObjects = []
     slotMap = {}
+    idToSlot = {}
 
     for row in allSlots:
         if row["BarberID"] == appointment.getBarberId():
             slot = TimeSlot(
-                slotId=row["SlotID"],
-                barberId=row["BarberID"],
-                dayOfWeek=row["Day"],
-                startTime=row["StartTime"],
-                endTime=row["EndTime"],
-                weekCommencing=row["WeekCommencing"],
-                isAvailable=bool(row["IsAvailable"])
+                slotId = row["SlotID"],
+                barberId = row["BarberID"],
+                dayOfWeek = row["Day"],
+                startTime = row["StartTime"],
+                endTime = row["EndTime"],
+                weekCommencing = row["WeekCommencing"],
+                isAvailable = bool(row["IsAvailable"]),
+                isSelected = False
             )
             slotObjects.append(slot)
             slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
+            idToSlot[slot.getSlotId()] = slot
 
-    # Get week commencing from any slot
     weekCommencing = slotObjects[0].getWeekCommencing() if slotObjects else "Unknown"
 
+    # Reflect any previously selected/locked slots into the objects
+    selectionLocked = appointment.isSelectionLocked()
+    if appointment.getSlotIds():
+        for sid in appointment.getSlotIds():
+            slot = idToSlot.get(sid)
+            if slot:
+                slot.setSelected(True)
+
     if request.method == "POST":
-        selectedSlotIds = request.form.getlist("selectedSlots")
-        if len(selectedSlotIds) != requiredSlotCount:
-            flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
+        action = request.form.get("action")
+
+        if action == "validate":
+            selectedSlotIds = [int(sid) for sid in request.form.getlist("selectedSlots")]
+
+            # Validate number of slots
+            if len(selectedSlotIds) != requiredSlotCount:
+                flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
+
+            # Ensures selected slots are available
+            elif any(not idToSlot[sid].isAvailable() for sid in selectedSlotIds):
+                flash("One or more selected slots are unavailable.", "Error")
+
+            # Validate consecutive and same day
+            elif not validateSlots(selectedSlotIds, idToSlot):
+                flash("Selected slots must be consecutive and on the same day.", "Error")
+
+            else:
+                appointment.lockSelection()
+
+                # Passes selected slots into appointment class
+                for sid in selectedSlotIds:
+                    if sid not in appointment.getSlotIds():
+                        appointment.addSlot(sid)
+                    idToSlot[sid].setSelected(True)
+
+                flash("Please review your selected time slots and proceed when ready.", "Success")
+                selectionLocked = True
+
+        elif action == "proceed":
+            if not appointment.isSelectionLocked() or not appointment.getSlotIds():
+                flash("Please confirm your slots before proceeding.", "Error")
+            else:
+                return redirect("/confirm_appointment")
+
+        elif action == "reset":
+            appointment.unlockSelection()
+            appointment.clearSlots()
+
+            for slot in slotObjects:
+                slot.setSelected(False)
+
+            appointment.clearSlots()
+            flash("Selection has been reset.", "Success")
+            selectionLocked = False
+
         else:
-            for slotId in selectedSlotIds:
-                appointment.addSlot(int(slotId))
-            return redirect("/confirm_appointment")
+            flash("Unknown action.", "Error")
 
     return render_template(
         "webpages/customer_facing/select_time_slot.html",
-        appointment=appointment,
-        barberName=barberName,
-        weekCommencing=weekCommencing,
-        requiredSlotCount=requiredSlotCount,
-        days=days,
-        timeIntervals=timeIntervals,
-        slotMap=slotMap,
-        nav_context="select_time_slot"
+        appointment = appointment,
+        barberName = barberName,
+        weekCommencing = weekCommencing,
+        requiredSlotCount = requiredSlotCount,
+        days = days,
+        timeIntervals = timeIntervals,
+        slotMap = slotMap,
+        selectionLocked = selectionLocked,
+        nav_context = "select_time_slot"
     )
