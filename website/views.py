@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 
 from datetime import datetime, timedelta
 
-from website.database_management import fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, get_barber_by_id
+from website.database_management import readAppointments, readAppointmentSlots, readAppointmentServices, readTimeSlots, get_db_connection, fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, get_barber_by_id
 from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
 from algorithms.appointment_classes import Appointment, TimeSlot
 
@@ -73,6 +73,32 @@ def customer_dashboard():
 @views.route("/view_appointments")
 @login_required
 def view_appointments():
+
+    # Read and print all slots
+    slots = readTimeSlots()
+    print("--------------------- All TIME SLOTS ---------------------------")
+    for slot in slots:
+        print(slot)
+
+    # Read and print all appointments
+    appointments = readAppointments()
+    print("--------------------- APPOINTMENT ---------------------------")
+    for appt in appointments:
+        print(appt)
+
+    slots = readAppointmentSlots()
+    print("--------------------- APPOINTMENT SLOTS ---------------------------")
+    for slot in slots:
+        print(slot)
+
+    services = readAppointmentServices()
+    print("--------------------- APPOINTMENT SERVICES ---------------------------")
+    for service in services:
+        print(service)
+
+
+
+
 
     return render_template(
         "webpages/customer_facing/view_appointments.html",
@@ -470,10 +496,21 @@ def confirmBooking():
 
     if request.method == "POST":
         action = request.form.get("action")
+
         if action == "confirm":
+
             appointment.setDate(selectedDate)
-            flash("Booking confirmed successfully.", "Success")
-            return redirect(f"/booking_confirmed?ref={appointment.getBookingReference()}")
+            appointment = activeAppointments.get(current_user.customerId)
+
+            conn = get_db_connection()
+
+            if appointment.addBookingToDatabase(conn):
+                flash("Booking confirmed successfully.", "Success")
+                return redirect(f"/booking_confirmed?ref={appointment.getBookingReference()}")
+
+            else:
+                flash("There was a problem confirming your booking.", "Error")
+                return redirect("/confirm_booking")
 
     return render_template(
         "webpages/customer_facing/confirm_booking.html",
@@ -496,12 +533,12 @@ def bookingConfirmed():
     if not bookingReference:
         return render_template(
             "webpages/customer_facing/booking_confirmed.html",
-            bookingReference="Unavailable",
-            nav_context="booking_confirmed"
+            bookingReference = "Unavailable",
+            nav_context = "booking_confirmed"
         )
 
     return render_template(
         "webpages/customer_facing/booking_confirmed.html",
-        bookingReference=bookingReference,
-        nav_context="booking_confirmed"
+        bookingReference = bookingReference,
+        nav_context = "booking_confirmed"
     )

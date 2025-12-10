@@ -1,3 +1,5 @@
+from website.database_management import updateSlotAvailability
+
 class Appointment:
     def __init__(self, customerId: int):
         self.__bookingReference = None
@@ -96,6 +98,56 @@ class Appointment:
         else:
             self.__totalPrice += price
         self.__totalDuration += duration
+
+    def insertAppointmentRecord(self, cursor):
+        cursor.execute("""
+            INSERT INTO tblAppointment (CustomerID, BarberID, NoteForBarber, Date)
+            VALUES (:CustomerID, :BarberID, :NoteForBarber, :Date)
+        """, {
+            "CustomerID": self.__customerId,
+            "BarberID": self.__barberId,
+            "NoteForBarber": self.__noteForBarber,
+            "Date": self.__date
+        })
+        self.__bookingReference = cursor.lastrowid
+        return self.__bookingReference
+
+    def insertAppointmentSlots(self, cursor):
+        slotPairs = self.getAppointmentSlots()
+        cursor.executemany("""
+            INSERT INTO tblAppointmentSlots (SlotID, BookingReference)
+            VALUES (?, ?)
+        """, slotPairs)
+
+    def insertAppointmentServices(self, cursor):
+        servicePairs = self.getAppointmentServices()
+        cursor.executemany("""
+            INSERT INTO tblAppointmentServices (BookingReference, ServiceID)
+            VALUES (?, ?)
+        """, servicePairs)
+
+    def addBookingToDatabase(self, conn):
+        try:
+            conn.execute("BEGIN")
+            cursor = conn.cursor()
+
+            self.insertAppointmentRecord(cursor)
+            self.insertAppointmentSlots(cursor)
+            self.insertAppointmentServices(cursor)
+
+            updateSlotAvailability(cursor, self)
+
+            conn.commit()
+            return True
+        except Exception as error:
+            conn.rollback()
+            print("Booking failed:", error)
+            return False
+
+
+
+
+
 
 class TimeSlot:
     def __init__(self, slotId: int, barberId: int, dayOfWeek: str, startTime: str, endTime: str,

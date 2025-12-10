@@ -15,6 +15,41 @@ def get_db_connection():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+# FOR TESTING -------------------------------------------------------------------
+
+def readTimeSlots():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    rows = cursor.execute("SELECT * FROM tblTimeSlot").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def readAppointments():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    rows = cursor.execute("SELECT * FROM tblAppointment").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def readAppointmentServices():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    rows = cursor.execute("SELECT * FROM tblAppointmentServices").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def readAppointmentSlots():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    rows = cursor.execute("SELECT * FROM tblAppointmentSlots").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 def init_db():
     # Creates all required tables if they don't exist
     conn = get_db_connection()
@@ -413,6 +448,14 @@ def get_selected_services_from_ids(ids):
         "duration": row["Duration"],
         "price": row["Price"],
     } for row in rows]
+
+def updateSlotAvailability(cursor, appointment):
+    slotIds = appointment.getSlotIds()
+    cursor.executemany("""
+        UPDATE tblTimeSlot
+        SET IsAvailable = 0
+        WHERE SlotID = ?
+    """, [(sid,) for sid in slotIds])
 
 # Parameterised SQL Statements for Barbers
 
