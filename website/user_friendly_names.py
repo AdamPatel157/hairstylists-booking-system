@@ -1,4 +1,4 @@
-def user_friendly_service_names(serviceName):
+def userFriendlyServiceNames(serviceName):
     mapping = {
         "MachineOnly": "Machine Only",
         "MachineAndScissor": "Machine and Scissors",
@@ -22,7 +22,7 @@ def user_friendly_service_names(serviceName):
     }
     return mapping.get(serviceName, serviceName)
 
-def user_friendly_category_names(categoryName):
+def userFriendlyCategoryNames(categoryName):
     mapping = {
         "Haircuts": "Haircuts",
         "HairWashAndDry": "Hair Wash and Dry",

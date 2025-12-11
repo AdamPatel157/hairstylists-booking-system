@@ -1,13 +1,13 @@
 import sqlite3
 import os
 
-from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
+from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 from datetime import datetime, timedelta
 
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
-def get_db_connection():
+def getDbConnection():
     # Creates a connection to the SQLite database
     # row_factory makes results accessible as dictionaries
     conn = sqlite3.connect(databasePath)
@@ -18,7 +18,7 @@ def get_db_connection():
 # FOR TESTING -------------------------------------------------------------------
 
 def readTimeSlots():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     rows = cursor.execute("SELECT * FROM tblTimeSlot").fetchall()
     conn.close()
@@ -26,7 +26,7 @@ def readTimeSlots():
 
 
 def readAppointments():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     rows = cursor.execute("SELECT * FROM tblAppointment").fetchall()
     conn.close()
@@ -34,7 +34,7 @@ def readAppointments():
 
 
 def readAppointmentServices():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     rows = cursor.execute("SELECT * FROM tblAppointmentServices").fetchall()
     conn.close()
@@ -42,7 +42,7 @@ def readAppointmentServices():
 
 
 def readAppointmentSlots():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     rows = cursor.execute("SELECT * FROM tblAppointmentSlots").fetchall()
     conn.close()
@@ -50,9 +50,9 @@ def readAppointmentSlots():
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-def init_db():
+def initDb():
     # Creates all required tables if they don't exist
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     # Customer table - stores registered customer accounts
@@ -337,10 +337,10 @@ def init_db():
 
 # Parameterised SQL Statements for Customers
 
-def create_customer(firstName, middleName, lastName, email, hashedPassword, phoneNumber):
+def createCustomer(firstName, middleName, lastName, email, hashedPassword, phoneNumber):
     # Inserts a new customer record using parameterized query
     # The ? placeholders prevent SQL injection attacks
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("""
                    INSERT INTO tblCustomer (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, IsBlackListed, PhoneNumber)
@@ -352,10 +352,10 @@ def create_customer(firstName, middleName, lastName, email, hashedPassword, phon
     return customerId
 
 
-def get_customer_by_email(email):
+def getCustomerByEmail(email):
     # Retrieves customer by email using parameterized query
     # Returns None if not found, otherwise returns a dictionary-like row
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * "
                        "FROM tblCustomer "
@@ -365,9 +365,9 @@ def get_customer_by_email(email):
     conn.close()
     return customer
 
-def get_customer_by_phone(phoneNumber):
+def getCustomerByPhone(phoneNumber):
     # Retrieves customer by phone number
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * "
                        "FROM tblCustomer "
@@ -377,9 +377,9 @@ def get_customer_by_phone(phoneNumber):
     conn.close()
     return customer
 
-def get_customer_by_id(customerId):
+def getCustomerById(customerId):
     # Used by Flask-Login to reload user from session
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * "
                        "FROM tblCustomer "
@@ -389,9 +389,9 @@ def get_customer_by_id(customerId):
     conn.close()
     return customer
 
-def update_customer_password(email, newHashedPassword):
+def updateCustomerPassword(email, newHashedPassword):
     # Updates customer password using parameterized UPDATE
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("UPDATE tblCustomer "
                        "SET HashedPassword = ? "
@@ -400,8 +400,8 @@ def update_customer_password(email, newHashedPassword):
     conn.commit()
     conn.close()
 
-def fetch_services():
-    conn = get_db_connection()
+def fetchServices():
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT ServiceID, ServiceName, Duration, Price, ServiceCategory FROM tblService")
     rows = cursor.fetchall()
@@ -409,8 +409,8 @@ def fetch_services():
 
     servicesByCategory = {}
     for serviceId, serviceName, duration, price, category in rows:
-        readableCategory = user_friendly_category_names(category)
-        readableName = user_friendly_service_names(serviceName)
+        readableCategory = userFriendlyCategoryNames(category)
+        readableName = userFriendlyServiceNames(serviceName)
 
         if readableCategory not in servicesByCategory:
             servicesByCategory[readableCategory] = []
@@ -424,10 +424,10 @@ def fetch_services():
 
     return servicesByCategory
 
-def get_selected_services_from_ids(ids):
+def getSelectedServicesFromIds(ids):
     if not ids:
         return []
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     ids = tuple(int(i) for i in ids)
@@ -444,7 +444,7 @@ def get_selected_services_from_ids(ids):
 
     return [{
         "serviceId": row["ServiceID"],
-        "serviceName": user_friendly_service_names(row["ServiceName"]),
+        "serviceName": userFriendlyServiceNames(row["ServiceName"]),
         "duration": row["Duration"],
         "price": row["Price"],
     } for row in rows]
@@ -459,14 +459,14 @@ def updateSlotAvailability(cursor, appointment):
 
 # Parameterised SQL Statements for Barbers
 
-def insert_barbers():
+def insertBarbers():
     barbers = [
         (1, "Fayaz", "Gani", "adminfayaz@email.com", "1d2129c27a88edd6532254aa2397a14f889b5d139f20697d7a0a40b88861f210", 1, 11),
         (2, "Moosa", "Gani", "barbermoosa@email.com", "6597e230212f0af1f3a0537fd39634a59b2f22d335dce4c0fe6c3ce7928762f7", 0, 7),
         (3, "Uwais", "Gani", "barberuwais@email.com", "6e75968c94e989d4bba8164cfae98a517163f47a8ec5c45e021c1cfe98e8158b", 0, 3)
     ]
 
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     cursor.executemany("""
@@ -479,7 +479,7 @@ def insert_barbers():
 
 
 def ensureCurrentWeekSlots():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     # Get the latest week commencing in the DB
@@ -499,7 +499,7 @@ def ensureCurrentWeekSlots():
 
 
 def generateWeeklySlots():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     cursor.execute("SELECT MAX(WeekCommencing) FROM tblTimeSlot")
@@ -538,7 +538,7 @@ def generateWeeklySlots():
 
 
 def getAllTimeSlots():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM tblTimeSlot")
     rows = cursor.fetchall()
@@ -546,8 +546,8 @@ def getAllTimeSlots():
     return rows
 
 
-def get_barber_by_email(email):
-    conn = get_db_connection()
+def getBarberByEmail(email):
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * "
                        "FROM tblBarber "
@@ -558,8 +558,8 @@ def get_barber_by_email(email):
     return barber
 
 
-def get_barber_by_id(barberId):
-    conn = get_db_connection()
+def getBarberById(barberId):
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("SELECT * "
                        "FROM tblBarber "
@@ -570,7 +570,7 @@ def get_barber_by_id(barberId):
     return barber
 
 def getAllBarbers():
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -595,8 +595,8 @@ def getAllBarbers():
 
     return barbers
 
-def update_barber_password(email, newHashedPassword):
-    conn = get_db_connection()
+def updateBarberPassword(email, newHashedPassword):
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("UPDATE tblBarber "
                        "SET HashedPassword = ? "
@@ -608,10 +608,10 @@ def update_barber_password(email, newHashedPassword):
 
 # Unverified User SQL Statements
 
-def create_unverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,
+def createUnverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,
                       isPasswordReset):
     # Creates temporary unverified record for email verification or password reset
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("""
                    INSERT INTO tblUnverified (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, PhoneNumber, VerificationCode, IsPasswordReset)
@@ -622,8 +622,8 @@ def create_unverified(firstName, middleName, lastName, email, hashedPassword, ph
     conn.close()
     return unverifiedId
 
-def get_unverified_by_id(unverifiedId, isPasswordReset=None):
-    conn = get_db_connection()
+def getUnverifiedById(unverifiedId, isPasswordReset=None):
+    conn = getDbConnection()
     cursor = conn.cursor()
     if isPasswordReset is not None:
         cursor.execute("SELECT * "
@@ -640,9 +640,9 @@ def get_unverified_by_id(unverifiedId, isPasswordReset=None):
     conn.close()
     return unverified
 
-def delete_unverified(unverifiedId):
+def deleteUnverified(unverifiedId):
     # Deletes unverified record after successful verification
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM tblUnverified "
                        "WHERE UnverifiedID = ?",
@@ -650,10 +650,10 @@ def delete_unverified(unverifiedId):
     conn.commit()
     conn.close()
 
-def cleanup_expired_unverified(expiryMinutes=30):
+def cleanupExpiredUnverified(expiryMinutes=30):
     # Removes unverified records older than specified time
     # Uses SQLite's datetime functions with parameterized query
-    conn = get_db_connection()
+    conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("""
                        DELETE

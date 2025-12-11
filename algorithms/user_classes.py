@@ -1,6 +1,5 @@
 from flask_login import UserMixin
 
-# Creates the abstract 'User' superclass
 class User:
 
     # Initialises the attributes for the 'User' superclass
@@ -30,8 +29,7 @@ class Customer(UserMixin):
         self.phoneNumber = phoneNumber
 
     def get_id(self):
-        # Flask-Login uses this to store user ID in session
-        # Prefix distinguishes customers from barbers
+        # Must be in snake case to be recognised by Flask Login
         return f"customer_{self.customerId}"
 
 class Barber(UserMixin):
@@ -47,6 +45,7 @@ class Barber(UserMixin):
 
     def get_id(self):
         return f"barber_{self.barberId}"
+        # Must be in snake case to be recognised by Flask Login
 
     def viewSchedule(self):
         pass

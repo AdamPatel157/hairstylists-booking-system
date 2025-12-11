@@ -3,8 +3,8 @@ from flask_login import login_required, current_user
 
 from datetime import datetime, timedelta
 
-from website.database_management import readAppointments, readAppointmentSlots, readAppointmentServices, readTimeSlots, get_db_connection, fetch_services, get_selected_services_from_ids, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, get_barber_by_id
-from website.user_friendly_names import user_friendly_service_names, user_friendly_category_names
+from website.database_management import readAppointments, readAppointmentSlots, readAppointmentServices, readTimeSlots, getDbConnection, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
+from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
 
 views = Blueprint("views", __name__)
@@ -18,7 +18,7 @@ def getActualDate(weekCommencing: str, dayAbbrev: str) -> str:
         "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6
     }
     offsetDays = offsets.get(dayAbbrev, 0)
-    actualDate = baseDate + timedelta(days=offsetDays)
+    actualDate = baseDate + timedelta(days = offsetDays)
     return actualDate.strftime("%d-%m-%Y")
 
 def calculateRequiredSlots(duration: int):
@@ -62,17 +62,17 @@ def home():
 
 @views.route("/customer_dashboard")
 @login_required
-def customer_dashboard():
+def customerDashboard():
     return render_template(
         "webpages/customer_facing/customer_dashboard.html",
-        firstName=current_user.firstName,
-        nav_context="dashboard"
+        firstName = current_user.firstName,
+        nav_context = "dashboard"
     )
 
 
 @views.route("/view_appointments")
 @login_required
-def view_appointments():
+def viewAppointments():
 
     # Read and print all slots
     slots = readTimeSlots()
@@ -102,13 +102,13 @@ def view_appointments():
 
     return render_template(
         "webpages/customer_facing/view_appointments.html",
-        nav_context="dashboard")
+        nav_context = "dashboard")
 
 
-@views.route("/select_services", methods=["GET", "POST"])
+@views.route("/select_services", methods = ["GET", "POST"])
 @login_required
 def selectServices():
-    servicesByCategory = fetch_services()
+    servicesByCategory = fetchServices()
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -198,7 +198,7 @@ def selectServices():
                 flash("You can only select one service from the Beard Wash and Dry category", "Error")
 
             else:
-                selectedServices = get_selected_services_from_ids(service for service in selectedIds)
+                selectedServices = getSelectedServicesFromIds(service for service in selectedIds)
                 timeDuration = sum(int(service["duration"]) for service in selectedServices)
 
                 if timeDuration < 14:
@@ -209,7 +209,7 @@ def selectServices():
 
             if valid:
                 flash("Your choices have been successfully selected. Please proceed when ready.", "Success")
-                selectedServices = get_selected_services_from_ids(service for service in selectedIds)
+                selectedServices = getSelectedServicesFromIds(service for service in selectedIds)
                 totalPrice = 5 + sum(float(service["price"]) for service in selectedServices)
                 totalDuration = sum(int(service["duration"]) for service in selectedServices)
 
@@ -240,15 +240,15 @@ def selectServices():
         elif action == "continue":
             selectedIds = [int(selectedId) for selectedId in request.form.getlist("service")]
 
-            selectedServices = get_selected_services_from_ids(selectedIds)
+            selectedServices = getSelectedServicesFromIds(selectedIds)
 
             appointment = Appointment(current_user.customerId)
             print(request.form)
             for service in selectedServices:
                 appointment.addService(
-                    serviceId=service["serviceId"],
-                    price=float(service["price"]),
-                    duration=int(service["duration"])
+                    serviceId = service["serviceId"],
+                    price = float(service["price"]),
+                    duration = int(service["duration"])
                 )
 
             activeAppointments[current_user.customerId] = appointment
@@ -259,13 +259,13 @@ def selectServices():
         elif action == "reset":
             return render_template(
                 "webpages/customer_facing/select_services.html",
-                servicesByCategory=servicesByCategory,
-                selectedServices=[],
-                selectedServiceIds=[],
-                totalPrice=5,
-                totalDuration=0,
-                summaryReady=False,
-                nav_context="select_services"
+                servicesByCategory = servicesByCategory,
+                selectedServices = [],
+                selectedServiceIds = [],
+                totalPrice = 5,
+                totalDuration = 0,
+                summaryReady = False,
+                nav_context = "select_services"
             )
 
     # GET request
@@ -281,7 +281,7 @@ def selectServices():
     )
 
 
-@views.route("/select_barber", methods=["GET", "POST"])
+@views.route("/select_barber", methods = ["GET", "POST"])
 @login_required
 def selectBarber():
     appointment = activeAppointments.get(current_user.customerId)
@@ -307,7 +307,7 @@ def selectBarber():
     )
 
 
-@views.route("/select_time_slot", methods=["GET", "POST"])
+@views.route("/select_time_slot", methods = ["GET", "POST"])
 @login_required
 def selectSlot():
 
@@ -331,7 +331,7 @@ def selectSlot():
     duration = appointment.getTotalDuration()
     requiredSlotCount = calculateRequiredSlots(duration)
 
-    barber = get_barber_by_id(appointment.getBarberId())
+    barber = getBarberById(appointment.getBarberId())
     barberName = f"{barber["FirstName"]} {barber["LastName"]}"
 
     # Builds slots for the barber
@@ -426,7 +426,7 @@ def selectSlot():
         nav_context = "select_time_slot"
     )
 
-@views.route("/note_for_barber", methods=["GET", "POST"])
+@views.route("/note_for_barber", methods = ["GET", "POST"])
 @login_required
 def noteForBarber():
     appointment = activeAppointments.get(current_user.customerId)
@@ -456,7 +456,7 @@ def noteForBarber():
     )
 
 
-@views.route("/confirm_booking", methods=["GET", "POST"])
+@views.route("/confirm_booking", methods = ["GET", "POST"])
 @login_required
 def confirmBooking():
     appointment = activeAppointments.get(current_user.customerId)
@@ -473,16 +473,16 @@ def confirmBooking():
         flash("Incomplete appointment details.", "Error")
         return redirect("/select_services")
 
-    selectedServices = get_selected_services_from_ids(serviceIds)
+    selectedServices = getSelectedServicesFromIds(serviceIds)
 
-    barber = get_barber_by_id(barberId)
+    barber = getBarberById(barberId)
     barberName = f"{barber['FirstName']} {barber['LastName']}"
 
     allSlots = getAllTimeSlots()
     slotDetails = [row for row in allSlots if row["SlotID"] in slotIds]
 
     # Sorts slots by start time
-    slotDetails.sort(key=lambda s: s["StartTime"])
+    slotDetails.sort(key = lambda s: s["StartTime"])
 
     weekCommencing = slotDetails[0]["WeekCommencing"]
     selectedDay = slotDetails[0]["Day"]
@@ -502,7 +502,7 @@ def confirmBooking():
             appointment.setDate(selectedDate)
             appointment = activeAppointments.get(current_user.customerId)
 
-            conn = get_db_connection()
+            conn = getDbConnection()
 
             if appointment.addBookingToDatabase(conn):
                 flash("Booking confirmed successfully.", "Success")
@@ -528,7 +528,7 @@ def confirmBooking():
 @views.route("/booking_confirmed")
 @login_required
 def bookingConfirmed():
-    bookingReference = request.args.get("ref", type=int)
+    bookingReference = request.args.get("ref", type = int)
 
     if not bookingReference:
         return render_template(

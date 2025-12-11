@@ -6,20 +6,15 @@ from flask import Blueprint, render_template, request, flash, redirect, session
 # 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
 # 'session' library allows data to be stored temporarily in cookies.
 
-from website.database_management import (get_customer_by_email, get_barber_by_email, create_customer,
-    get_customer_by_phone, create_unverified, get_unverified_by_id,
-    delete_unverified, update_customer_password, update_barber_password)
-# Allows the system to access user-related database manipulation functions and access tables
+from website.database_management import (getCustomerByEmail, getBarberByEmail, createCustomer,
+    getCustomerByPhone, createUnverified, getUnverifiedById,
+    deleteUnverified, updateCustomerPassword, updateBarberPassword, cleanupExpiredUnverified)
 
-from algorithms.hash_password import hash_password
+from algorithms.hash_password import hashPassword
 
-from algorithms.email_otp import generate_otp, send_verification_email
-
-# Imports the SHA-256 hashing algorithm for passwords from the hash_password file
+from algorithms.email_otp import generateOtp, sendVerificationEmail
 
 from flask_login import login_user, logout_user, login_required
-
-from algorithms.time_limits import cleanup_expired_unverified
 
 from algorithms.user_classes import Customer, Barber
 
@@ -36,10 +31,10 @@ userRedirection = Blueprint("auth", __name__)
 def validateName(name, namePos):
     lowercaseEnglishAlphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
     if (len(name) < 2) and (namePos != "Middle"): # Allows empty middle name fields
-        flash(f"{namePos} Name must be greater than 1 character long.", category="Error")
+        flash(f"{namePos} Name must be greater than 1 character long.", category = "Error")
         return False
     elif any(character.lower() not in lowercaseEnglishAlphabet for character in name):
-        flash(f"{namePos} Name can only contain English alphabet characters.", category="Error")
+        flash(f"{namePos} Name can only contain English alphabet characters.", category = "Error")
         return False
     else:
         return True
@@ -65,11 +60,11 @@ def validatePhoneNumber(phoneNum):
             if not phoneNum.isdigit():
                 flash("Phone Numbers can only contain digits 0-9.", category = "Error")
             elif len(phoneNum) != 11:
-                flash("Phone Numbers must be exactly 11 characters long.", category="Error")
+                flash("Phone Numbers must be exactly 11 characters long.", category = "Error")
             elif phoneNum[0] != '0':
-                flash("Phone Numbers must begin with the number '0'.", category="Error")
+                flash("Phone Numbers must begin with the number '0'.", category = "Error")
             else:
-                flash("Please enter a valid phone number.", category="Error")
+                flash("Please enter a valid phone number.", category = "Error")
             return False
         else:
             return True
@@ -80,15 +75,15 @@ def validatePassword(createPassword, confirmPassword):
     numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
     if len(createPassword) < 8:
-        flash("Passwords must be at least 8 characters in length.", category="Error")
+        flash("Passwords must be at least 8 characters in length.", category = "Error")
         return False
 
     elif not any(character.lower() in lowercaseEnglishAlphabet for character in createPassword):
-        flash("Passwords must contain at least one English alphabet character.", category="Error")
+        flash("Passwords must contain at least one English alphabet character.", category = "Error")
         return False
 
     elif not any(character in numbers for character in createPassword):
-        flash("Passwords must contain at least one integer number 0-9.", category="Error")
+        flash("Passwords must contain at least one integer number 0-9.", category = "Error")
         return False
 
     elif not any(character in passwordPunctuation for character in createPassword):
@@ -96,15 +91,15 @@ def validatePassword(createPassword, confirmPassword):
         return False
 
     elif createPassword == createPassword.lower():  # If there are no uppercase letters
-        flash("Passwords must contain at least one uppercase letter.", category="Error")
+        flash("Passwords must contain at least one uppercase letter.", category = "Error")
         return False
 
     elif createPassword == createPassword.upper():  # If there are no lowercase letters
-        flash("Passwords must contain at least one lowercase letter.", category="Error")
+        flash("Passwords must contain at least one lowercase letter.", category = "Error")
         return False
 
     elif createPassword != confirmPassword:  # If the confirmation password does not equal the created password
-        flash("Passwords do not match.", category="Error")
+        flash("Passwords do not match.", category = "Error")
         return False
 
     else:
@@ -112,60 +107,67 @@ def validatePassword(createPassword, confirmPassword):
 
 # Processes webpage HTTP requests
 
-@userRedirection.route("/login", methods=["GET", "POST"])
+@userRedirection.route("/login", methods = ["GET", "POST"])
 def login():
     if request.method == "POST": # Evaluates the below block if receiving a POST request from the login.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
         email = request.form.get("email").strip()
         password = request.form.get("password")
 
-        customerData = get_customer_by_email(email)
-        barberData = get_barber_by_email(email)
+        customerData = getCustomerByEmail(email)
+        barberData = getBarberByEmail(email)
 
         if customerData:
-            if customerData["HashedPassword"] == hash_password(password):
+            if customerData["HashedPassword"] == hashPassword(password):
                 flash("You have successfully logged in and been taken to the customer dashboard", category="Success")
                 # Creates Customer object for Flask-Login
                 customer = Customer(
-                    customerId=customerData['CustomerID'],
-                    firstName=customerData['FirstName'],
-                    middleName=customerData['MiddleName'],
-                    lastName=customerData['LastName'],
-                    email=customerData['EmailAddress'],
-                    hashedPassword=customerData['HashedPassword'],
-                    isBlacklisted=customerData['IsBlackListed'],
-                    phoneNumber=customerData['PhoneNumber']
+                    customerId = customerData['CustomerID'],
+                    firstName = customerData['FirstName'],
+                    middleName = customerData['MiddleName'],
+                    lastName = customerData['LastName'],
+                    email = customerData['EmailAddress'],
+                    hashedPassword = customerData['HashedPassword'],
+                    isBlacklisted = customerData['IsBlackListed'],
+                    phoneNumber = customerData['PhoneNumber']
                 )
-                login_user(customer, remember=True)
+                login_user(customer, remember = True)
                 return redirect("/customer_dashboard")
             else:
-                flash("Incorrect Password. Please try again.", category="Error")
+                flash("Incorrect Password. Please try again.", category = "Error")
         elif barberData:
-            if barberData["HashedPassword"] == hash_password(password):
+            if barberData["HashedPassword"] == hashPassword(password):
                 flash("You have successfully logged in and been taken to the barber dashboard", category="Success")
                 barber = Barber(
-                    barberId=barberData['BarberID'],
-                    firstName=barberData['FirstName'],
-                    middleName=barberData['MiddleName'],
-                    lastName=barberData['LastName'],
-                    email=barberData['EmailAddress'],
-                    hashedPassword=barberData['HashedPassword'],
-                    isAdmin=barberData['IsAdmin']
+                    barberId = barberData['BarberID'],
+                    firstName = barberData['FirstName'],
+                    middleName = barberData['MiddleName'],
+                    lastName = barberData['LastName'],
+                    email = barberData['EmailAddress'],
+                    hashedPassword = barberData['HashedPassword'],
+                    isAdmin = barberData['IsAdmin']
                 )
-                login_user(barber, remember=True)
+                login_user(barber, remember = True)
                 return redirect("/") # Link to barber dashboard
             else:
-                flash("Incorrect Password. Please try again.", category="Error")
+                flash("Incorrect Password. Please try again.", category = "Error")
         else:
             flash("Incorrect Email Address. Please try again, or create an account with that email.", category="Error")
 
     return render_template("webpages/user_management/login.html")
 
-@userRedirection.route("/register", methods=["GET", "POST"])
+@userRedirection.route("/register", methods = ["GET", "POST"])
 def register():
     error = False
-    # Cleans up expired unverified records
-    cleanup_expired_unverified()
+    cleanupExpiredUnverified()
+
+    firstName = ""
+    middleName = ""
+    lastName = ""
+    email = ""
+    phoneNumber = ""
+    password1 = ""
+    password2 = ""
 
     if request.method == "POST": # Evaluates the below block if receiving a POST request from the register.html webpage
         # Assigns received user input values from HTTP POST Request to local variables with matching identifiers
@@ -178,8 +180,8 @@ def register():
         password2 = request.form.get("password2")
 
         # Ensures that no account already exists with the same email address
-        customer = get_customer_by_email(email)
-        customerWithPhone = get_customer_by_phone(phoneNumber)
+        customer = getCustomerByEmail(email)
+        customerWithPhone = getCustomerByPhone(phoneNumber)
         print(customerWithPhone)
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
@@ -202,12 +204,12 @@ def register():
             # If all validation check procedures are true, stores inputs in tblUnverified in database
             if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
                 # Hashes password before storing
-                hashedPassword = hash_password(password1)
+                hashedPassword = hashPassword(password1)
 
                 # Creates unverified record in database
-                verificationCode = generate_otp()
+                verificationCode = generateOtp()
 
-                unverifiedId = create_unverified(
+                unverifiedId = createUnverified(
                     firstName, middleName, lastName, email,
                     hashedPassword, phoneNumber, verificationCode, 0
                 )
@@ -228,23 +230,23 @@ def register():
 @login_required # Only allows user to access this route if they are logged in
 def logout():
     logout_user()
-    flash("You have logged out and been returned to the home page.", category="Success")
+    flash("You have logged out and been returned to the home page.", category = "Success")
     return redirect("/")
 
 
-@userRedirection.route("/verify_email", methods=["GET", "POST"])
-def verify_email():
+@userRedirection.route("/verify_email", methods = ["GET", "POST"])
+def verifyEmail():
     # Checks if there is a pending registration
     if "unverifiedID" not in session:
-        flash("There is no pending registration. Please register or login.", category="Error")
+        flash("There is no pending registration. Please register or login.", category = "Error")
         return redirect("/register")
 
     # Retrieves unverified user ID record from database
     unverifiedId = session["unverifiedID"]
-    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=0)
+    unverifiedRecord = getUnverifiedById(unverifiedId, isPasswordReset = 0)
 
     if not unverifiedRecord:
-        flash("Registration session expired. Please try again.", category="Error")
+        flash("Registration session expired. Please try again.", category = "Error")
         session.pop("unverifiedID", None)
         return redirect("/register")
 
@@ -255,7 +257,7 @@ def verify_email():
         getVerificationCode = request.form.get("otpCode").strip()
 
         if getVerificationCode == verificationCode:
-            create_customer(
+            createCustomer(
                 unverifiedRecord["FirstName"],
                 unverifiedRecord["MiddleName"],
                 unverifiedRecord["LastName"],
@@ -265,50 +267,50 @@ def verify_email():
             )
 
             # Deletes unverified record
-            delete_unverified(unverifiedId)
+            deleteUnverified(unverifiedId)
 
             # Clears temporary cookie data once records are moved to tblCustomer
             session.pop("unverifiedID", None)
 
-            flash("Your email has been verified.", category="Success")
-            flash("Account Successfully Created.", category="Success")
+            flash("Your email has been verified.", category = "Success")
+            flash("Account Successfully Created.", category = "Success")
             return redirect("/login")
         else:
             flash("Incorrect Verification Code. Please try again or return to 'Create Account'.", category="Error")
 
     elif request.method == "GET":
-        # Send verification email on first visit
+        # Sends verification email on first visit
         try:
-            emailSent = send_verification_email(email, verificationCode)
+            emailSent = sendVerificationEmail(email, verificationCode)
             if not emailSent:
                 flash("Something went wrong in sending a verification email. Please try again.", category="Error")
-                delete_unverified(unverifiedId)
+                deleteUnverified(unverifiedId)
                 session.pop("unverifiedID", None)
                 return redirect("/register")
             else:
                 flash("A verification code has been sent to your email inbox (if it exists). Please also check your junk folder.", category="Success")
         except:
-            flash("An internet connection is required to create an account", category="Error")
+            flash("An internet connection is required to create an account", category = "Error")
             return redirect("/register")
-    return render_template("webpages/user_management/verify.html", is_password_reset=False)
+    return render_template("webpages/user_management/verify.html", is_password_reset = False)
 
 
-@userRedirection.route("/forgot-password", methods=["POST"])
-def forgot_password():
+@userRedirection.route("/forgot-password", methods = ["POST"])
+def forgotPassword():
     # Handles password reset request from login page
     email = request.form.get("forgot_email").strip()
 
     # Checks if email exists in either customer or barber table
-    customerData = get_customer_by_email(email)
-    barberData = get_barber_by_email(email)
+    customerData = getCustomerByEmail(email)
+    barberData = getBarberByEmail(email)
 
     if customerData or barberData:
-        otpCode = generate_otp()
+        otpCode = generateOtp()
 
         # Creates unverified record for password reset
         # Uses existing data from customer/barber table
         if customerData:
-            unverifiedId = create_unverified(
+            unverifiedId = createUnverified(
                 customerData['FirstName'],
                 customerData['MiddleName'],
                 customerData['LastName'],
@@ -320,7 +322,7 @@ def forgot_password():
             )
         else:
             # If the user is a barber
-            unverifiedId = create_unverified(
+            unverifiedId = createUnverified(
                 barberData['FirstName'],
                 barberData['MiddleName'],
                 barberData['LastName'],
@@ -334,33 +336,33 @@ def forgot_password():
         # Stores only unverified ID in session
         session["unverifiedID"] = unverifiedId
 
-        success = send_verification_email(email, otpCode)
+        success = sendVerificationEmail(email, otpCode)
 
         if success:
-            flash("Password reset code sent to your email!", category="Success")
+            flash("Password reset code sent to your email!", category = "Success")
             return redirect("/verify_password_reset")
         else:
-            flash("Failed to send email. Please try again.", category="Error")
-            delete_unverified(unverifiedId)
+            flash("Failed to send email. Please try again.", category = "Error")
+            deleteUnverified(unverifiedId)
             return redirect("/login")
     else:
         flash("No account exists with that email. Enter a different email or Create an Account.", category="Error")
         return redirect("/login")
 
 
-@userRedirection.route("/verify_password_reset", methods=["GET", "POST"])
-def verify_password_reset():
+@userRedirection.route("/verify_password_reset", methods = ["GET", "POST"])
+def verifyPasswordReset():
     # Checks if the user has a pending password reset
     if "unverifiedID" not in session:
-        flash("Please request a password reset first.", category="Error")
+        flash("Please request a password reset first.", category = "Error")
         return redirect("/login")
 
     # Retrieves unverified record from database
     unverifiedId = session["unverifiedID"]
-    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=1)
+    unverifiedRecord = getUnverifiedById(unverifiedId, isPasswordReset = 1)
 
     if not unverifiedRecord:
-        flash("Password reset session expired or invalid. Please try again.", category="Error")
+        flash("Password reset session expired or invalid. Please try again.", category = "Error")
         session.pop("unverifiedID", None)
         return redirect("/login")
 
@@ -377,7 +379,7 @@ def verify_password_reset():
     return render_template("webpages/user_management/verify.html", is_password_reset=True)
 
 
-@userRedirection.route("/set_new_password", methods=["GET", "POST"])
+@userRedirection.route("/set_new_password", methods = ["GET", "POST"])
 def set_new_password():
     # Checks if user has completed OTP verification
     if "unverifiedID" not in session:
@@ -386,7 +388,7 @@ def set_new_password():
 
     # Retrieves unverified record
     unverifiedId = session["unverifiedID"]
-    unverifiedRecord = get_unverified_by_id(unverifiedId, isPasswordReset=1)
+    unverifiedRecord = getUnverifiedById(unverifiedId, isPasswordReset = 1)
 
     if not unverifiedRecord:
         flash("Password reset session expired or invalid. Please try again.", category="Error")
@@ -400,22 +402,22 @@ def set_new_password():
         # Validates passwords using existing validation function
         if validatePassword(newPassword, confirmPassword):
             # Hashes the new password
-            hashedPassword = hash_password(newPassword)
+            hashedPassword = hashPassword(newPassword)
 
             # Updates password in database
             email = unverifiedRecord["EmailAddress"]
 
             # Check which type of user and update accordingly
-            customerData = get_customer_by_email(email)
-            barberData = get_barber_by_email(email)
+            customerData = getCustomerByEmail(email)
+            barberData = getBarberByEmail(email)
 
             if customerData:
-                update_customer_password(email, hashedPassword)
+                updateCustomerPassword(email, hashedPassword)
             elif barberData:
-                update_barber_password(email, hashedPassword)
+                updateBarberPassword(email, hashedPassword)
 
             # Deletes unverified record
-            delete_unverified(unverifiedId)
+            deleteUnverified(unverifiedId)
 
             # Clears the cookie storing the unverifiedID from the session
             session.pop("unverifiedID", None)

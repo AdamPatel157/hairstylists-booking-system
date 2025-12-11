@@ -7,13 +7,13 @@ from email.mime.text import MIMEText
 # Allows emails to be sent with the SMTP protocol
 
 # Generates a random 6 digit number
-def generate_otp() -> str:
+def generateOtp():
     otpCode = ""
     for digit in range(0, 6):
         otpCode = otpCode + str(random.randint(0, 9))
     return otpCode
 
-def send_verification_email(receiverEmail: str, otpCode: str):
+def sendVerificationEmail(receiverEmail: str, otpCode: str):
     # Sends a verification email containing the OTP code using Gmail's SMTP server
     # Email Content
     subject = "Your Email Verification Code"
@@ -53,6 +53,6 @@ def send_verification_email(receiverEmail: str, otpCode: str):
 # For testing the individual module:
 
 if __name__ == "__main__":
-    verificationCode = generate_otp()
+    verificationCode = generateOtp()
     receivingEmail = input("Enter your email address: ")
-    send_verification_email(receivingEmail, verificationCode)
+    sendVerificationEmail(receivingEmail, verificationCode)

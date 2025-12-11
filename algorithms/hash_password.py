@@ -1,12 +1,11 @@
-def hash_password(getPassword):
+def hashPassword(getPassword):
     # Pre-processing Starts Here:
     # Takes each character from the user's password and converts to binary then joins them together
     binaryPassword = ""
     for character in getPassword:
         binaryPassword = binaryPassword + format(ord(character), '08b')
 
-    binaryPassword += '1'
-    # Appends a single '1' bit to the end of the string
+    binaryPassword = binaryPassword + '1'
 
     while len(binaryPassword) % 512 != 448:
         binaryPassword = binaryPassword + '0'
@@ -39,24 +38,24 @@ def hash_password(getPassword):
     while len(w) < 64:
         w.append(0)
 
-    def right_rotate(value, bits):
+    def rightRotate(value, bits):
         return ((value >> bits) | (value << (32 - bits))) & 0xFFFFFFFF
 
     for i in range(16, 64):
-        s0 = (right_rotate(w[i-15], 7) ^ right_rotate(w[i-15], 18) ^ (w[i-15] >> 3))
-        s1 = (right_rotate(w[i-2], 17) ^ right_rotate(w[i-2], 19) ^ (w[i-2] >> 10))
+        s0 = (rightRotate(w[i-15], 7) ^ rightRotate(w[i-15], 18) ^ (w[i-15] >> 3))
+        s1 = (rightRotate(w[i-2], 17) ^ rightRotate(w[i-2], 19) ^ (w[i-2] >> 10))
         w[i] = (w[i-16] + s0 + w[i-7] + s1) & 0xFFFFFFFF
 
     # Compression
-    a, b, c, d, e, f, g, h_temp = h
+    a, b, c, d, e, f, g, hTemp = h
     for i in range(0, 64):
-        S1 = (right_rotate(e, 6) ^ right_rotate(e, 11) ^ right_rotate(e, 25))
+        S1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
         choice = (e & f) ^ ((~e) & g)
-        temp1 = (h_temp + S1 + choice + k[i] + w[i]) & 0xFFFFFFFF
-        S0 = (right_rotate(a, 2) ^ right_rotate(a, 13) ^ right_rotate(a, 22))
+        temp1 = (hTemp + S1 + choice + k[i] + w[i]) & 0xFFFFFFFF
+        S0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
         majority = (a & b) ^ (a & c) ^ (b & c)
         temp2 = (S0 + majority) & 0xFFFFFFFF
-        h_temp = g
+        hTemp = g
         g = f
         f = e
         e = (d + temp1) & 0xFFFFFFFF
@@ -73,11 +72,11 @@ def hash_password(getPassword):
     h[4] = (h[4] + e) & 0xFFFFFFFF
     h[5] = (h[5] + f) & 0xFFFFFFFF
     h[6] = (h[6] + g) & 0xFFFFFFFF
-    h[7] = (h[7] + h_temp) & 0xFFFFFFFF
+    h[7] = (h[7] + hTemp) & 0xFFFFFFFF
 
     # Concatenate final hash
-    final_hash = ''.join(format(value, '08x') for value in h)
-    return final_hash
+    finalHash = ''.join(format(value, '08x') for value in h)
+    return finalHash
 
 # For individual module testing purposes:
 
