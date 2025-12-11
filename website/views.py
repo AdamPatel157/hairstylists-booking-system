@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from website.database_management import readAppointments, readAppointmentSlots, readAppointmentServices, readTimeSlots, getDbConnection, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
+from algorithms.email_otp import sendBookingConfirmationEmail
 
 views = Blueprint("views", __name__)
 
@@ -505,6 +506,7 @@ def confirmBooking():
             conn = getDbConnection()
 
             if appointment.addBookingToDatabase(conn):
+                sendBookingConfirmationEmail(appointment.getBookingReference())
                 flash("Booking confirmed successfully.", "Success")
                 return redirect(f"/booking_confirmed?ref={appointment.getBookingReference()}")
 

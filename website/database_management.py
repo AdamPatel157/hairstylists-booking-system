@@ -9,9 +9,9 @@ databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
 def getDbConnection():
     # Creates a connection to the SQLite database
-    # row_factory makes results accessible as dictionaries
     conn = sqlite3.connect(databasePath)
     conn.row_factory = sqlite3.Row
+    # row_factory returns SQL Statement results in dictionaries
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
@@ -334,6 +334,94 @@ def initDb():
     conn.commit()
     conn.close()
 
+
+# Cross-Parameterised SQL Statements
+
+def getBookingDetails(bookingReference: int):
+    # Gets appointment details from the booking reference number and returns as a dictionary
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        appointmentRow = cursor.execute("""
+            SELECT 
+                tblAppointment.BookingReference,
+                tblAppointment.Date,
+                tblAppointment.NoteForBarber,
+                tblCustomer.FirstName AS CustomerFirstName,
+                tblCustomer.LastName AS CustomerLastName,
+                tblCustomer.EmailAddress AS CustomerEmail,
+                tblBarber.FirstName AS BarberFirstName,
+                tblBarber.LastName AS BarberLastName
+            FROM tblAppointment
+            JOIN tblCustomer ON tblAppointment.CustomerID = tblCustomer.CustomerID
+            JOIN tblBarber ON tblAppointment.BarberID = tblBarber.BarberID
+            WHERE tblAppointment.BookingReference = ?
+        """, (bookingReference,)).fetchone()
+
+        if not appointmentRow:
+            return None
+
+        slotRows = cursor.execute("""
+            SELECT 
+                tblTimeSlot.Day,
+                tblTimeSlot.StartTime,
+                tblTimeSlot.EndTime,
+                tblTimeSlot.WeekCommencing
+            FROM tblAppointmentSlots
+            JOIN tblTimeSlot ON tblAppointmentSlots.SlotID = tblTimeSlot.SlotID
+            WHERE tblAppointmentSlots.BookingReference = ?
+            ORDER BY tblTimeSlot.StartTime
+        """, (bookingReference,)).fetchall()
+
+        serviceRows = cursor.execute("""
+            SELECT 
+                tblService.ServiceName,
+                tblService.Duration,
+                tblService.Price
+            FROM tblAppointmentServices
+            JOIN tblService ON tblAppointmentServices.ServiceID = tblService.ServiceID
+            WHERE tblAppointmentServices.BookingReference = ?
+        """, (bookingReference,)).fetchall()
+
+        totalDuration = sum(row["Duration"] for row in serviceRows)
+        totalPrice = sum(row["Price"] for row in serviceRows)
+
+        serviceNames = [row["ServiceName"] for row in serviceRows]
+
+        startTime = slotRows[0]["StartTime"]
+        endTime = slotRows[-1]["EndTime"]
+        selectedDate = slotRows[0]["WeekCommencing"]
+        selectedDay = slotRows[0]["Day"]
+
+        customerName = appointmentRow["CustomerFirstName"] + " " + appointmentRow["CustomerLastName"]
+        barberName = appointmentRow["BarberFirstName"] + " " + appointmentRow["BarberLastName"]
+
+        return {
+            "bookingReference": bookingReference,
+            "customerName": customerName,
+            "customerEmail": appointmentRow["CustomerEmail"],
+            "selectedDate": selectedDate,
+            "selectedDay": selectedDay,
+            "startTime": startTime,
+            "endTime": endTime,
+            "haircutDuration": totalDuration,
+            "totalPrice": totalPrice,
+            "barberName": barberName,
+            "services": serviceNames,
+            "noteForBarber": appointmentRow["NoteForBarber"]
+        }
+
+    except sqlite3.Error as error:
+        print("Database error occurred:", error)
+        return None
+
+    except:
+        print("An unexpected error occurred.")
+        return None
+
+    finally:
+        conn.close()
 
 # Parameterised SQL Statements for Customers
 
