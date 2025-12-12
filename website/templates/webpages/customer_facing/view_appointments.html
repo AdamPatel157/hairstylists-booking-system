@@ -1,15 +1,51 @@
 {% extends "bases/customer_base.html" %}
-<!-- The above line causes this page to re-use all code in customer_base.html without re-writing -->
-<!-- This page utilises a CSS framework called bootstrap for the GUI -->
-<!-- Bootstrap designs have been imported with the links in website_base.html -->
 
 {% block title %}My Upcoming Appointments{% endblock %}
 
 {% block content %}
-
 <div class="container mt-4">
-
     <h1 class="mb-3"><strong>My Upcoming Appointments</strong></h1>
-</div>
 
+    {% if appointments %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 6%;">Booking Ref</th>
+                    <th style="width: 11%;">Date</th>
+                    <th style="width: 7%;">Start</th>
+                    <th style="width: 7%;">End</th>
+                    <th style="width: 10%;">Barber</th>
+                    <th style="width: 10%;">Price</th>
+                    <th style="width: 53%;">Selected Services</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                <tr>
+                    <td>{{ appointment.bookingReference }}</td>
+                    <td>{{ appointment.date }}</td>
+                    <td>{{ appointment.startTime }}</td>
+                    <td>{{ appointment.endTime }}</td>
+                    <td>{{ appointment.barberName }}</td>
+                    <td>£{{ "%.2f"|format(appointment.totalPrice) }}</td>
+                    <td>
+                        <ul class="mb-0">
+                            {% for service in appointment.services %}
+                            <li>{{ service }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>You have no upcoming appointments.</p>
+    {% endif %}
+
+    <a href="{{ url_for('views.customerDashboard') }}" class="btn btn-success mt-3">← Return to Customer Dashboard</a>
+</div>
+<br>
 {% endblock %}

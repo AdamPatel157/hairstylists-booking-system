@@ -76,7 +76,7 @@ def sendBookingConfirmationEmail(bookingReference: int):
         f"Shop Address:\n72 Hartington Rd,\nLeicester,\nLE2 0GN\n\n"
         f"Appointment Date: {details['selectedDate']} ({details['selectedDay']})\n"
         f"Time: {details['startTime']} - {details['endTime']}\n\n"
-        f"Total Price: £{details['totalPrice']:.2f}\n"
+        f"Total Price: £{(details['totalPrice'] + 5):.2f}\n"
         f"Barber: {details['barberName']}\n"
         f"Services: {servicesList}\n\n"
         f"Additional Notes for Barber: {details['noteForBarber'] if details['noteForBarber'] else 'None'}\n\n"

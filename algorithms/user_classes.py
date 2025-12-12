@@ -1,72 +1,53 @@
 from flask_login import UserMixin
 
-class User:
-
-    # Initialises the attributes for the 'User' superclass
+class User(UserMixin):
     def __init__(self, firstName, lastName, emailAddress, hashedPassword):
         self.firstName = firstName
-        self.lastname = lastName
+        self.lastName = lastName
         self.emailAddress = emailAddress
         self.hashedPassword = hashedPassword
 
-    def login(self):
+    def get_id(self):
+        # Abstract Method
+        # Uses snake case to be recognised by Flask Login
         pass
 
-    def logout(self):
-        pass
 
-class Customer(UserMixin):
-    # Represents a logged-in customer user
-    # UserMixin provides default implementations for Flask-Login methods
+class Customer(User):
     def __init__(self, customerId, firstName, middleName, lastName, email, hashedPassword, isBlacklisted, phoneNumber):
+        super().__init__(firstName, lastName, email, hashedPassword)
         self.customerId = customerId
-        self.firstName = firstName
         self.middleName = middleName
-        self.lastName = lastName
-        self.email = email
-        self.hashedPassword = hashedPassword
         self.isBlacklisted = isBlacklisted
         self.phoneNumber = phoneNumber
 
     def get_id(self):
-        # Must be in snake case to be recognised by Flask Login
-        return f"customer_{self.customerId}"
+        # For Flask Login Recognition only
+        flaskFormat = f"customer_{self.customerId}"
+        return flaskFormat
 
-class Barber(UserMixin):
-    # Represents a logged-in barber/admin user
+
+    def getCustomerId(self):
+        # For the ID number to be used in SQL statements
+        return self.customerId
+
+
+class Barber(User):
     def __init__(self, barberId, firstName, middleName, lastName, email, hashedPassword, isAdmin):
+        super().__init__(firstName, lastName, email, hashedPassword)
         self.barberId = barberId
-        self.firstName = firstName
         self.middleName = middleName
-        self.lastName = lastName
-        self.email = email
-        self.hashedPassword = hashedPassword
         self.isAdmin = isAdmin
 
     def get_id(self):
-        return f"barber_{self.barberId}"
-        # Must be in snake case to be recognised by Flask Login
+        # For Flask Login Recognition only
+        flaskFormat = f"barber_{self.barberId}"
+        return flaskFormat
 
-    def viewSchedule(self):
-        pass
+    def getBarberId(self):
+        # For the ID number to be used in SQL statements
+        return self.barberId
 
-    def exportSchedule(self):
-        pass
 
-    def blockTimeSlots(self):
-        pass
-
-    def viewBasicRevenue(self):
-        pass
-
-# Creates the 'Admin' subclass inheriting from the 'Barber' superclass
 class Admin(Barber):
-
-    def cancelAppointment(self):
-        pass
-
-    def blacklistCustomer(self):
-        pass
-
-    def viewComprehensiveRevenue(self):
-        pass
+    pass

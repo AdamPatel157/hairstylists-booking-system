@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 
 from datetime import datetime, timedelta
 
-from website.database_management import readAppointments, readAppointmentSlots, readAppointmentServices, readTimeSlots, getDbConnection, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
+from website.database_management import getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
 from algorithms.email_otp import sendBookingConfirmationEmail
@@ -13,7 +13,7 @@ views = Blueprint("views", __name__)
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
 
-def getActualDate(weekCommencing: str, dayAbbrev: str) -> str:
+def getActualDate(weekCommencing: str, dayAbbrev: str):
     baseDate = datetime.strptime(weekCommencing, "%Y-%m-%d")
     offsets = {
         "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6
@@ -27,21 +27,17 @@ def calculateRequiredSlots(duration: int):
     return duration // 20 if remainder < 10 else (duration // 20) + 1
 
 def validateSlots(slotIds, idToSlot):
-    # Must have at least one slot
     if not slotIds:
         return False
 
-    # Resolve slots
     slots = [idToSlot.get(int(sid)) for sid in slotIds]
     if any(s is None for s in slots):
         return False
 
-    # All on same day
     day = slots[0].getDayOfWeek()
     if any(s.getDayOfWeek() != day for s in slots):
         return False
 
-    # Sorts by start time
     def toMinutes(t: str):
         hh, mm = t.split(":")
         result = (int(hh) * 60) + int(mm)
@@ -75,35 +71,10 @@ def customerDashboard():
 @login_required
 def viewAppointments():
 
-    # Read and print all slots
-    slots = readTimeSlots()
-    print("--------------------- All TIME SLOTS ---------------------------")
-    for slot in slots:
-        print(slot)
+    customerID = current_user.getCustomerId()
+    bookings = getUpcomingAppointments(customerID)
 
-    # Read and print all appointments
-    appointments = readAppointments()
-    print("--------------------- APPOINTMENT ---------------------------")
-    for appt in appointments:
-        print(appt)
-
-    slots = readAppointmentSlots()
-    print("--------------------- APPOINTMENT SLOTS ---------------------------")
-    for slot in slots:
-        print(slot)
-
-    services = readAppointmentServices()
-    print("--------------------- APPOINTMENT SERVICES ---------------------------")
-    for service in services:
-        print(service)
-
-
-
-
-
-    return render_template(
-        "webpages/customer_facing/view_appointments.html",
-        nav_context = "dashboard")
+    return render_template("webpages/customer_facing/view_appointments.html", appointments = bookings, nav_context = "dashboard")
 
 
 @views.route("/select_services", methods = ["GET", "POST"])

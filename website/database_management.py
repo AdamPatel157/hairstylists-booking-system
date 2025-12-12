@@ -15,40 +15,6 @@ def getDbConnection():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-# FOR TESTING -------------------------------------------------------------------
-
-def readTimeSlots():
-    conn = getDbConnection()
-    cursor = conn.cursor()
-    rows = cursor.execute("SELECT * FROM tblTimeSlot").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-
-def readAppointments():
-    conn = getDbConnection()
-    cursor = conn.cursor()
-    rows = cursor.execute("SELECT * FROM tblAppointment").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-
-def readAppointmentServices():
-    conn = getDbConnection()
-    cursor = conn.cursor()
-    rows = cursor.execute("SELECT * FROM tblAppointmentServices").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-
-def readAppointmentSlots():
-    conn = getDbConnection()
-    cursor = conn.cursor()
-    rows = cursor.execute("SELECT * FROM tblAppointmentSlots").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 def initDb():
     # Creates all required tables if they don't exist
@@ -391,7 +357,7 @@ def getBookingDetails(bookingReference: int):
 
         startTime = slotRows[0]["StartTime"]
         endTime = slotRows[-1]["EndTime"]
-        selectedDate = slotRows[0]["WeekCommencing"]
+        selectedDate = appointmentRow["Date"]
         selectedDay = slotRows[0]["Day"]
 
         customerName = appointmentRow["CustomerFirstName"] + " " + appointmentRow["CustomerLastName"]
@@ -423,7 +389,105 @@ def getBookingDetails(bookingReference: int):
     finally:
         conn.close()
 
+
+def getUpcomingAppointments(customerID: int):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        # Gets appointments with barber and slot info
+        appointmentRows = cursor.execute("""
+            SELECT 
+                Appointment.BookingReference,
+                Appointment.Date,
+                TimeSlot.StartTime,
+                TimeSlot.EndTime,
+                Barber.FirstName AS BarberFirstName,
+                Barber.LastName AS BarberLastName
+            FROM tblAppointment AS Appointment
+            JOIN tblAppointmentSlots AS AppointmentSlot 
+              ON Appointment.BookingReference = AppointmentSlot.BookingReference
+            JOIN tblTimeSlot AS TimeSlot 
+              ON AppointmentSlot.SlotID = TimeSlot.SlotID
+            JOIN tblBarber AS Barber 
+              ON Appointment.BarberID = Barber.BarberID
+            WHERE Appointment.CustomerID = ?
+            ORDER BY Appointment.Date, TimeSlot.StartTime
+        """, (customerID,)).fetchall()
+
+        # Gets services for each appointment
+        serviceRows = cursor.execute("""
+            SELECT 
+                AppointmentService.BookingReference,
+                Service.ServiceName,
+                Service.Price
+            FROM tblAppointmentServices AS AppointmentService
+            JOIN tblService AS Service 
+              ON AppointmentService.ServiceID = Service.ServiceID
+            JOIN tblAppointment AS Appointment 
+              ON AppointmentService.BookingReference = Appointment.BookingReference
+            WHERE Appointment.CustomerID = ?
+        """, (customerID,)).fetchall()
+
+        # Groups services by booking reference
+        servicesByBooking = {}
+        for row in serviceRows:
+            bookingRef = row["BookingReference"]
+            if bookingRef not in servicesByBooking:
+                servicesByBooking[bookingRef] = {
+                    "services": [],
+                    "totalPrice": 5.00  # £5.00 booking fee
+                }
+            servicesByBooking[bookingRef]["services"].append(userFriendlyServiceNames(row["ServiceName"]))
+            servicesByBooking[bookingRef]["totalPrice"] += row["Price"]
+
+        # Groups slot rows by booking reference
+        slotsByBooking = {}
+        for row in appointmentRows:
+            bookingRef = row["BookingReference"]
+            if bookingRef not in slotsByBooking:
+                slotsByBooking[bookingRef] = []
+            slotsByBooking[bookingRef].append(row)
+
+        appointments = {}
+        now = datetime.now()
+
+        for bookingRef, slotRows in slotsByBooking.items():
+            firstRow = slotRows[0]
+            latestEndTime = max(row["EndTime"] for row in slotRows)
+
+            try:
+                appointmentDateTime = datetime.strptime(
+                    f"{firstRow['Date']} {firstRow['StartTime']}", "%d-%m-%Y %H:%M"
+                )
+            except ValueError:
+                appointmentDateTime = datetime.strptime(
+                    f"{firstRow['Date']} {firstRow['StartTime']}", "%d-%m-%Y %H:%M:%S"
+                )
+
+            if appointmentDateTime >= now:
+                appointments[bookingRef] = {
+                    "bookingReference": bookingRef,
+                    "date": firstRow["Date"],
+                    "startTime": firstRow["StartTime"],
+                    "endTime": latestEndTime,
+                    "barberName": firstRow["BarberFirstName"] + " " + firstRow["BarberLastName"],
+                    "totalPrice": servicesByBooking.get(bookingRef, {}).get("totalPrice", 0),
+                    "services": servicesByBooking.get(bookingRef, {}).get("services", [])
+                }
+
+        return list(appointments.values())
+
+    except sqlite3.Error as error:
+        print("Database error:", error)
+        return []
+
+    finally:
+        conn.close()
+
+
 # Parameterised SQL Statements for Customers
+
 
 def createCustomer(firstName, middleName, lastName, email, hashedPassword, phoneNumber):
     # Inserts a new customer record using parameterized query
@@ -612,14 +676,14 @@ def generateWeeklySlots():
 
                 while currentTime < endTime:
                     startStr = currentTime.strftime("%H:%M")
-                    endStr = (currentTime + timedelta(minutes=slotLength)).strftime("%H:%M")
+                    endStr = (currentTime + timedelta(minutes = slotLength)).strftime("%H:%M")
 
                     cursor.execute("""
                         INSERT INTO tblTimeSlot (Day, StartTime, EndTime, WeekCommencing, IsAvailable, BarberID)
                         VALUES (?, ?, ?, ?, ?, ?)
                     """, (day, startStr, endStr, weekCommencing, True, barberId))
 
-                    currentTime += timedelta(minutes=slotLength)
+                    currentTime += timedelta(minutes = slotLength)
 
         conn.commit()
     conn.close()
