@@ -380,7 +380,7 @@ def verifyPasswordReset():
 
 
 @userRedirection.route("/set_new_password", methods = ["GET", "POST"])
-def set_new_password():
+def setNewPassword():
     # Checks if user has completed OTP verification
     if "unverifiedID" not in session:
         flash("Please complete the password reset process from the beginning.", category="Error")

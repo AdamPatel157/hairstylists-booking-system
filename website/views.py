@@ -7,11 +7,13 @@ from website.database_management import getDbConnection, getUpcomingAppointments
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
 from algorithms.email_otp import sendBookingConfirmationEmail
+from algorithms.time_slot_merge_sort import toMinutes, timeSlotMergeSort
 
 views = Blueprint("views", __name__)
 
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
+
 
 def getActualDate(weekCommencing: str, dayAbbrev: str):
     baseDate = datetime.strptime(weekCommencing, "%Y-%m-%d")
@@ -22,34 +24,48 @@ def getActualDate(weekCommencing: str, dayAbbrev: str):
     actualDate = baseDate + timedelta(days = offsetDays)
     return actualDate.strftime("%d-%m-%Y")
 
+
 def calculateRequiredSlots(duration: int):
     remainder = duration % 20
     return duration // 20 if remainder < 10 else (duration // 20) + 1
+
+
+def getSlotStartTimeInMinutes(slot):
+    startTime = slot.getStartTime()
+    startTimeInMinutes = toMinutes(startTime)
+    return startTimeInMinutes
+
 
 def validateSlots(slotIds, idToSlot):
     if not slotIds:
         return False
 
-    slots = [idToSlot.get(int(sid)) for sid in slotIds]
-    if any(s is None for s in slots):
-        return False
+    slots = []
+    for slotId in slotIds:
+        slotObject = idToSlot.get(int(slotId))
+        slots.append(slotObject)
 
-    day = slots[0].getDayOfWeek()
-    if any(s.getDayOfWeek() != day for s in slots):
-        return False
-
-    def toMinutes(t: str):
-        hh, mm = t.split(":")
-        result = (int(hh) * 60) + int(mm)
-        return result
-
-    slots.sort(key = lambda s: toMinutes(s.getStartTime()))
-
-    # Check each consecutive pair differs by exactly 20 minutes
-    for i in range(1, len(slots)):
-        if toMinutes(slots[i].getStartTime()) - toMinutes(slots[i - 1].getStartTime()) != 20:
+    for slot in slots:
+        if slot is None:
             return False
 
+    firstSlotDay = slots[0].getDayOfWeek()
+    for slot in slots:
+        if slot.getDayOfWeek() != firstSlotDay:
+            return False
+
+    slots = timeSlotMergeSort(slots)
+
+    # Checks that each consecutive slot starts exactly 20 minutes after the previous one
+    for index in range(1, len(slots)):
+        currentSlotStart = toMinutes(slots[index].getStartTime())
+        previousSlotStart = toMinutes(slots[index - 1].getStartTime())
+        difference = currentSlotStart - previousSlotStart
+
+        if difference != 20:
+            return False
+
+    # If all checks pass, the slots are valid
     return True
 
 @views.route("/")

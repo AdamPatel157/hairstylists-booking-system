@@ -145,10 +145,6 @@ class Appointment:
             return False
 
 
-
-
-
-
 class TimeSlot:
     def __init__(self, slotId: int, barberId: int, dayOfWeek: str, startTime: str, endTime: str,
                  weekCommencing: str, isAvailable: bool, isSelected: bool = False):
