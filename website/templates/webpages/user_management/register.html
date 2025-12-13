@@ -67,7 +67,7 @@
           class = "form-control"
           id = "phoneNumber"
           name = "phoneNumber"
-          placeholder = "Enter Phone Number if you would like to receive SMS reminders (Optional)"
+          placeholder = "Enter Phone Number (Optional)"
           value="{{ phoneNumber }}"
         />
     </div>
@@ -107,7 +107,7 @@
                 <li>At least one punctuation character:
                     [?, !, £, %, ^, &, *, (, ), /, #]</li>
             </ul>
-            <p>And be at least 8 characters in length</p>
+            <p>And be between 8 and 55 characters in length</p>
         </div>
     </div>
     </div>
@@ -116,9 +116,6 @@
     <br />
 </form>
 
-<!-- Creates empty space below button -->
-<div class="container mt-4">
-  <h1 class="mb-4"><strong> </strong></h1>
-</div>
+<br>
 
 {% endblock %}

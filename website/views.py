@@ -1,72 +1,18 @@
 from flask import Blueprint, render_template, request, flash, redirect
 from flask_login import login_required, current_user
 
-from datetime import datetime, timedelta
-
 from website.database_management import getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
-from algorithms.email_otp import sendBookingConfirmationEmail
-from algorithms.time_slot_merge_sort import toMinutes, timeSlotMergeSort
+from algorithms.email_communication import sendBookingConfirmationEmail
+from algorithms.validation_functions import validateSlots
+from algorithms.miscellaneous_functions import getActualDate, calculateRequiredSlots, getSlotStartTimeInMinutes
 
 views = Blueprint("views", __name__)
 
 activeAppointments = {}
 # Holds Appointment objects with the current_user.customerId key
 
-
-def getActualDate(weekCommencing: str, dayAbbrev: str):
-    baseDate = datetime.strptime(weekCommencing, "%Y-%m-%d")
-    offsets = {
-        "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6
-    }
-    offsetDays = offsets.get(dayAbbrev, 0)
-    actualDate = baseDate + timedelta(days = offsetDays)
-    return actualDate.strftime("%d-%m-%Y")
-
-
-def calculateRequiredSlots(duration: int):
-    remainder = duration % 20
-    return duration // 20 if remainder < 10 else (duration // 20) + 1
-
-
-def getSlotStartTimeInMinutes(slot):
-    startTime = slot.getStartTime()
-    startTimeInMinutes = toMinutes(startTime)
-    return startTimeInMinutes
-
-
-def validateSlots(slotIds, idToSlot):
-    if not slotIds:
-        return False
-
-    slots = []
-    for slotId in slotIds:
-        slotObject = idToSlot.get(int(slotId))
-        slots.append(slotObject)
-
-    for slot in slots:
-        if slot is None:
-            return False
-
-    firstSlotDay = slots[0].getDayOfWeek()
-    for slot in slots:
-        if slot.getDayOfWeek() != firstSlotDay:
-            return False
-
-    slots = timeSlotMergeSort(slots)
-
-    # Checks that each consecutive slot starts exactly 20 minutes after the previous one
-    for index in range(1, len(slots)):
-        currentSlotStart = toMinutes(slots[index].getStartTime())
-        previousSlotStart = toMinutes(slots[index - 1].getStartTime())
-        difference = currentSlotStart - previousSlotStart
-
-        if difference != 20:
-            return False
-
-    # If all checks pass, the slots are valid
-    return True
 
 @views.route("/")
 def home():
@@ -360,15 +306,14 @@ def selectSlot():
         if action == "validate":
             selectedSlotIds = [int(sid) for sid in request.form.getlist("selectedSlots")]
 
-            # Validate number of slots
+            # Validation of slot selections:
+
             if len(selectedSlotIds) != requiredSlotCount:
                 flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
 
-            # Ensures selected slots are available
             elif any(not idToSlot[sid].isAvailable() for sid in selectedSlotIds):
                 flash("One or more selected slots are unavailable.", "Error")
 
-            # Validate consecutive and same day
             elif not validateSlots(selectedSlotIds, idToSlot):
                 flash("Selected slots must be consecutive and on the same day.", "Error")
 
@@ -413,6 +358,7 @@ def selectSlot():
         selectionLocked = selectionLocked,
         nav_context = "select_time_slot"
     )
+
 
 @views.route("/note_for_barber", methods = ["GET", "POST"])
 @login_required
@@ -513,6 +459,7 @@ def confirmBooking():
         noteForBarber = barberNote,
         nav_context = "confirm_booking"
     )
+
 
 @views.route("/booking_confirmed")
 @login_required
