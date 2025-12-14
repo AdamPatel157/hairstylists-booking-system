@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, request, flash, redirect, session
-# 'Blueprint' library allows different sections of a Flask application to be organised into separate modules.
-# 'render_template' library allows HTML templates to be displayed dynamically through Python code.
-# 'request' library allows data to be accessed from incoming HTTP requests, such as form submissions.
-# 'flash' library allows for the system to display temporary feedback messages to the user's screen.
-# 'redirect' library allows the system to automatically navigate the user to a different webpage or route.
-# 'session' library allows data to be stored temporarily in cookies.
+# Blueprint library allows different sections of a Flask application to be organised into separate modules.
+# render_template library allows HTML templates to be displayed dynamically through Python code.
+# request library allows data to be accessed from incoming HTTP requests, such as form submissions.
+# flash library allows for the system to display temporary feedback messages to the user's screen.
+# redirect library allows the system to automatically navigate the user to a different webpage or route.
+# session library allows data to be stored temporarily in cookies.
 
 from website.database_management import (getCustomerByEmail, getBarberByEmail, createCustomer,
     getCustomerByPhone, createUnverified, getUnverifiedById,
