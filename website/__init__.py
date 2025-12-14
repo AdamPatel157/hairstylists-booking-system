@@ -20,10 +20,12 @@ def createApp():
 
     from .views import views
     from .user_redirection import userRedirection
+    from .barber_redirection import barberRedirection
     from .database_management import insertBarbers
 
     app.register_blueprint(views, url_prefix="/")
     app.register_blueprint(userRedirection, url_prefix="/")
+    app.register_blueprint(barberRedirection, url_prefix="/")
 
     createDatabase(app)
     insertBarbers()

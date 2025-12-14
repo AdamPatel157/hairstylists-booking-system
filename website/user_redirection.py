@@ -36,35 +36,39 @@ def login():
                 flash("You have successfully logged in and been taken to the customer dashboard", category="Success")
                 # Creates Customer object for Flask-Login
                 customer = Customer(
-                    customerId = customerData['CustomerID'],
-                    firstName = customerData['FirstName'],
-                    middleName = customerData['MiddleName'],
-                    lastName = customerData['LastName'],
-                    email = customerData['EmailAddress'],
-                    hashedPassword = customerData['HashedPassword'],
-                    isBlacklisted = customerData['IsBlackListed'],
-                    phoneNumber = customerData['PhoneNumber']
+                    customerId = customerData["CustomerID"],
+                    firstName = customerData["FirstName"],
+                    middleName = customerData["MiddleName"],
+                    lastName = customerData["LastName"],
+                    email = customerData["EmailAddress"],
+                    hashedPassword = customerData["HashedPassword"],
+                    isBlacklisted = customerData["IsBlackListed"],
+                    phoneNumber = customerData["PhoneNumber"]
                 )
                 login_user(customer, remember = True)
                 return redirect("/customer_dashboard")
+
             else:
                 flash("Incorrect Password. Please try again.", category = "Error")
+
         elif barberData:
             if barberData["HashedPassword"] == hashPassword(password):
                 flash("You have successfully logged in and been taken to the barber dashboard", category="Success")
                 barber = Barber(
-                    barberId = barberData['BarberID'],
-                    firstName = barberData['FirstName'],
-                    middleName = barberData['MiddleName'],
-                    lastName = barberData['LastName'],
-                    email = barberData['EmailAddress'],
-                    hashedPassword = barberData['HashedPassword'],
-                    isAdmin = barberData['IsAdmin']
+                    barberId = barberData["BarberID"],
+                    firstName = barberData["FirstName"],
+                    middleName = barberData["MiddleName"],
+                    lastName = barberData["LastName"],
+                    email = barberData["EmailAddress"],
+                    hashedPassword = barberData["HashedPassword"],
+                    isAdmin = barberData["IsAdmin"]
                 )
                 login_user(barber, remember = True)
-                return redirect("/") # Link to barber dashboard
+                return redirect("/barber_dashboard")
+
             else:
                 flash("Incorrect Password. Please try again.", category = "Error")
+
         else:
             flash("Incorrect Email Address. Please try again, or create an account with that email.", category="Error")
 
@@ -96,15 +100,16 @@ def register():
         # Ensures that no account already exists with the same email address
         customer = getCustomerByEmail(email)
         customerWithPhone = getCustomerByPhone(phoneNumber)
-        print(customerWithPhone)
+
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
-            error=True
+            error = True
 
         # Ensures that no account already exists with the same phone number, but allows empty fields
         elif customerWithPhone and phoneNumber != "":
             flash("An account has already been created with this phone number. Please try again with a different number." ,category="Error")
-            error=True
+            error = True
+
         else:
             # Passes form inputs into registration validation procedures
             # The procedures return True if passes validation and False if it fails
@@ -133,7 +138,7 @@ def register():
 
                 return redirect("/verify_email")
             else:
-                error=True
+                error = True
     if error:
         return render_template("webpages/user_management/register.html", firstName=firstName, middleName=middleName, lastName=lastName, email=email, phoneNumber=phoneNumber, password1=password1, password2=password2)
     else:
