@@ -42,16 +42,13 @@ def sendVerificationEmail(receiverEmail: str, otpCode: str):
             server.starttls()
             server.ehlo()
 
-            # Log in to the email account using the app password
             server.login(senderEmail, emailPassword)
 
-            # Send the message
             server.send_message(message)
             print("Verification email sent successfully")
             return True
 
     except smtplib.SMTPException:
-        # Handles errors without crashing the program if there is an issue
         print("Email failed to send.")
         return False
 

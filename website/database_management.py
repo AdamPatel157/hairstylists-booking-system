@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
 def getDbConnection():
-    # Creates a connection to the SQLite database
     conn = sqlite3.connect(databasePath)
     conn.row_factory = sqlite3.Row
     # row_factory returns SQL Statement results in dictionaries
@@ -17,11 +16,9 @@ def getDbConnection():
 
 
 def initDb():
-    # Creates all required tables if they don't exist
     conn = getDbConnection()
     cursor = conn.cursor()
 
-    # Customer table - stores registered customer accounts
     cursor.execute("""
                    CREATE TABLE IF NOT EXISTS tblCustomer
                    (
@@ -95,7 +92,7 @@ def initDb():
                    )
                    """)
 
-    # Unverified table - temporary storage for email verification and password resets
+    # Temporary storage for email verification and password resets
     cursor.execute("""
                    CREATE TABLE IF NOT EXISTS tblUnverified
                    (
@@ -758,6 +755,41 @@ def updateBarberPassword(email, newHashedPassword):
     conn.close()
 
 
+def getRevenueDataForWeek(barberID: int, weekCommencing: str):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    print("WEEK COMMENCING VALUES:")
+    cursor.execute("SELECT DISTINCT WeekCommencing FROM tblTimeSlot")
+    for row in cursor.fetchall():
+        print(row[0])
+    try:
+        rows = cursor.execute("""
+            SELECT
+                Appointment.BookingReference,
+                TimeSlot.Day,
+                SUM(DISTINCT Service.Price) AS TotalPrice
+            FROM tblAppointment AS Appointment
+            JOIN tblAppointmentSlots AS AppointmentSlot
+              ON Appointment.BookingReference = AppointmentSlot.BookingReference
+            JOIN tblTimeSlot AS TimeSlot
+              ON AppointmentSlot.SlotID = TimeSlot.SlotID
+            JOIN tblAppointmentServices AS AppointmentService
+              ON Appointment.BookingReference = AppointmentService.BookingReference
+            JOIN tblService AS Service
+              ON AppointmentService.ServiceID = Service.ServiceID
+            WHERE Appointment.BarberID = ?
+              AND TimeSlot.WeekCommencing = ?
+            GROUP BY Appointment.BookingReference, TimeSlot.Day;
+        """, (barberID, weekCommencing)).fetchall()
+        return rows
+    except:
+        print("Database error")
+        return []
+
+    finally:
+        conn.close()
+
+
 # Unverified User SQL Statements
 
 def createUnverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,
@@ -816,3 +848,4 @@ def cleanupExpiredUnverified(expiryMinutes=30):
     conn.commit()
     conn.close()
     return deletedCount
+

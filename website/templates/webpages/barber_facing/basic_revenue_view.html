@@ -1,0 +1,43 @@
+{% extends "bases/barber_base.html" %}
+
+{% block title %}Basic Revenue View{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Basic Revenue View</h1>
+            <a href="/barber_dashboard" class="btn btn-success">Return to Barber Dashboard</a>
+        </div>
+
+        <p><strong>Week Beginning:</strong> {{ week_commencing }}</p>
+
+        <table class="table table-bordered text-center mt-3">
+            <thead class="thead-light">
+                <tr>
+                    <th>Day</th>
+                    <th>Number of Appointments</th>
+                    <th>Expected Revenue (£)</th>
+                    <th>Expected Week Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day, data in revenue_data.items() %}
+                <tr>
+                    <td>{{ day }}</td>
+                    <td>{{ data.appointmentCount }}</td>
+                    <td>{{ "%.2f"|format(data.revenue) }}</td>
+                    <td>-</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td><strong>£{{ "%.2f"|format(total_week_revenue) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
