@@ -514,6 +514,7 @@ def getCustomerByEmail(email):
     conn.close()
     return customer
 
+
 def getCustomerByPhone(phoneNumber):
     # Retrieves customer by phone number
     conn = getDbConnection()
@@ -525,6 +526,7 @@ def getCustomerByPhone(phoneNumber):
     customer = cursor.fetchone()
     conn.close()
     return customer
+
 
 def getCustomerById(customerId):
     # Used by Flask-Login to reload user from session
@@ -538,6 +540,7 @@ def getCustomerById(customerId):
     conn.close()
     return customer
 
+
 def updateCustomerPassword(email, newHashedPassword):
     # Updates customer password using parameterized UPDATE
     conn = getDbConnection()
@@ -548,6 +551,7 @@ def updateCustomerPassword(email, newHashedPassword):
                        (newHashedPassword, email))
     conn.commit()
     conn.close()
+
 
 def fetchServices():
     conn = getDbConnection()
@@ -572,6 +576,7 @@ def fetchServices():
         })
 
     return servicesByCategory
+
 
 def getSelectedServicesFromIds(ids):
     if not ids:
@@ -598,6 +603,7 @@ def getSelectedServicesFromIds(ids):
         "price": row["Price"],
     } for row in rows]
 
+
 def updateSlotAvailability(cursor, appointment):
     slotIds = appointment.getSlotIds()
     cursor.executemany("""
@@ -607,6 +613,7 @@ def updateSlotAvailability(cursor, appointment):
     """, [(sid,) for sid in slotIds])
 
 # Parameterised SQL Statements for Barbers
+
 
 def insertBarbers():
     barbers = [
@@ -718,6 +725,7 @@ def getBarberById(barberId):
     conn.close()
     return barber
 
+
 def getAllBarbers():
     conn = getDbConnection()
     cursor = conn.cursor()
@@ -743,6 +751,7 @@ def getAllBarbers():
         print(row)
 
     return barbers
+
 
 def updateBarberPassword(email, newHashedPassword):
     conn = getDbConnection()
@@ -789,6 +798,61 @@ def getRevenueDataForWeek(barberID: int, weekCommencing: str):
     finally:
         conn.close()
 
+def getScheduleForWeek(barberID: int, weekCommencing: str):
+    conn = getDbConnection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    try:
+        rows = cursor.execute("""
+            SELECT
+                tblAppointment.BookingReference,
+                tblAppointment.Date,
+                tblTimeSlot.Day,
+                MIN(tblTimeSlot.StartTime) AS StartTime,
+                MAX(tblTimeSlot.EndTime) AS EndTime,
+                tblCustomer.FirstName,
+                tblCustomer.LastName,
+                tblAppointment.NoteForBarber,
+                ServiceSummary.TotalPrice,
+                ServiceSummary.Services
+            FROM tblAppointment
+            JOIN tblAppointmentSlots
+              ON tblAppointment.BookingReference = tblAppointmentSlots.BookingReference
+            JOIN tblTimeSlot
+              ON tblAppointmentSlots.SlotID = tblTimeSlot.SlotID
+            JOIN tblCustomer
+              ON tblAppointment.CustomerID = tblCustomer.CustomerID
+            LEFT JOIN (
+                SELECT
+                    tblAppointmentServices.BookingReference,
+                    SUM(tblService.Price) AS TotalPrice,
+                    GROUP_CONCAT(tblService.ServiceName, ', ') AS Services
+                FROM tblAppointmentServices
+                JOIN tblService
+                  ON tblAppointmentServices.ServiceID = tblService.ServiceID
+                GROUP BY tblAppointmentServices.BookingReference
+            ) AS ServiceSummary
+              ON ServiceSummary.BookingReference = tblAppointment.BookingReference
+            WHERE tblAppointment.BarberID = ?
+              AND tblTimeSlot.WeekCommencing = ?
+            GROUP BY
+                tblAppointment.BookingReference,
+                tblAppointment.Date,
+                tblTimeSlot.Day,
+                tblCustomer.FirstName,
+                tblCustomer.LastName
+            ORDER BY tblAppointment.Date, StartTime
+        """, (barberID, weekCommencing)).fetchall()
+
+        return rows
+
+    except Exception as e:
+        print("Database error in getScheduleForWeek:", e)
+        return []
+    finally:
+        conn.close()
+
 
 # Unverified User SQL Statements
 
@@ -805,6 +869,7 @@ def createUnverified(firstName, middleName, lastName, email, hashedPassword, pho
     unverifiedId = cursor.lastrowid
     conn.close()
     return unverifiedId
+
 
 def getUnverifiedById(unverifiedId, isPasswordReset=None):
     conn = getDbConnection()
@@ -824,6 +889,7 @@ def getUnverifiedById(unverifiedId, isPasswordReset=None):
     conn.close()
     return unverified
 
+
 def deleteUnverified(unverifiedId):
     # Deletes unverified record after successful verification
     conn = getDbConnection()
@@ -833,6 +899,7 @@ def deleteUnverified(unverifiedId):
                        (unverifiedId,))
     conn.commit()
     conn.close()
+
 
 def cleanupExpiredUnverified(expiryMinutes=30):
     # Removes unverified records older than specified time
@@ -848,4 +915,3 @@ def cleanupExpiredUnverified(expiryMinutes=30):
     conn.commit()
     conn.close()
     return deletedCount
-
