@@ -1,4 +1,6 @@
 from algorithms.time_slot_merge_sort import toMinutes, timeSlotMergeSort
+from algorithms.appointment_classes import TimeSlot
+from datetime import datetime, timedelta
 from flask import flash
 
 import re
@@ -35,6 +37,23 @@ def validateSlots(slotIds, idToSlot):
 
     # If all checks pass, the slots are valid
     return True
+
+
+def isSlotInPast(slot: TimeSlot):
+    weekCommencing = datetime.strptime(slot.getWeekCommencing(), "%Y-%m-%d")
+
+    dayMap = {"Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6}
+    dayOffset = dayMap[slot.getDayOfWeek()]
+
+    slotDate = weekCommencing + timedelta(days = dayOffset)
+
+    slotDateTime = datetime.strptime(
+        f"{slotDate.strftime('%Y-%m-%d')} {slot.getStartTime()}",
+        "%Y-%m-%d %H:%M"
+    )
+
+    return slotDateTime < datetime.now()
+
 
 def validateName(name, namePos):
     lowercaseEnglishAlphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']

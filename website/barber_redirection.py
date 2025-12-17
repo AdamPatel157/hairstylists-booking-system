@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, flash, redirect
+from flask import Blueprint, render_template, flash, redirect, request
 from flask_login import login_required, current_user
-from datetime import date, timedelta
 
-from website.database_management import getBarberById, getRevenueDataForWeek, getScheduleForWeek
+from algorithms.email_communication import sendCancellationEmail
+from website.database_management import getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
 from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
@@ -63,10 +63,7 @@ def basicRevenueView():
     firstName = barberRecord["FirstName"]
     isAdmin = barberRecord["IsAdmin"] == 1
 
-    today = date.today()
-    weekCommencing = today - timedelta(days=(today.weekday() + 1) % 7)
-    weekCommencingStr = weekCommencing.strftime("%Y-%m-%d")
-    weekCommencingDisplay = weekCommencing.strftime("%d-%m-%Y")
+    weekCommencingStr, weekCommencingDisplay = getWeekCommencingStrings()
 
     revenueRows = getRevenueDataForWeek(barberId, weekCommencingStr)
 
@@ -122,10 +119,7 @@ def viewSchedule():
     firstName = barberRecord["FirstName"]
     isAdmin = barberRecord["IsAdmin"] == 1
 
-    today = date.today()
-    weekCommencing = today - timedelta(days=(today.weekday() + 1) % 7)
-    weekCommencingStr = weekCommencing.strftime("%Y-%m-%d")
-    weekCommencingDisplay = weekCommencing.strftime("%d-%m-%Y")
+    weekCommencingStr, weekCommencingDisplay = getWeekCommencingStrings()
 
     rows = getScheduleForWeek(barberId, weekCommencingStr)
 
@@ -188,3 +182,31 @@ def viewSchedule():
         week_commencing = weekCommencingDisplay,
         schedule = schedule
     )
+
+@barberRedirection.route("/cancel_appointment", methods = ["POST"])
+@login_required
+def cancelAppointment():
+    bookingRef = request.form.get("booking_ref")
+    cancelReason = request.form.get("cancel_reason")
+
+    if not bookingRef or not cancelReason:
+        flash("Missing booking reference or cancellation reason.", category = "Error")
+        return redirect("/view_schedule")
+
+    try:
+        bookingRefInt = int(bookingRef)
+    except ValueError:
+        flash("Invalid booking reference format.", category = "Error")
+        return redirect("/view_schedule")
+
+    customerEmail = getCustomerEmailByBookingRef(bookingRefInt)
+    if customerEmail:
+        sendCancellationEmail(customerEmail, bookingRefInt, cancelReason)
+
+    success = cancelAppointmentByBookingRef(bookingRefInt)
+    if success:
+        flash(f"Appointment {bookingRefInt} successfully cancelled.", category="Success")
+    else:
+        flash(f"No appointment found with booking reference {bookingRefInt}.", category="Error")
+
+    return redirect("/view_schedule")

@@ -1,16 +1,13 @@
 from flask import Flask
 # Imports the Flask micro web framework library to develop the system as a website through Python
 
-import os
-
 from flask_login import LoginManager
 
 dbName = "database.db"
 
 def createApp():
     app = Flask (__name__)
-    app.config["SECRET KEY"] = "Adam157"
-    app.secret_key = b'Adam157'
+    app.config["SECRET_KEY"] = "Adam157"
     # Initialises the website with a private secret key
 
     from .database_management import initDb, getCustomerById, getBarberById
@@ -23,11 +20,10 @@ def createApp():
     from .barber_redirection import barberRedirection
     from .database_management import insertBarbers
 
-    app.register_blueprint(views, url_prefix="/")
-    app.register_blueprint(userRedirection, url_prefix="/")
-    app.register_blueprint(barberRedirection, url_prefix="/")
+    app.register_blueprint(views, url_prefix = "/")
+    app.register_blueprint(userRedirection, url_prefix = "/")
+    app.register_blueprint(barberRedirection, url_prefix = "/")
 
-    createDatabase(app)
     insertBarbers()
 
     loginManager = LoginManager()
@@ -69,11 +65,3 @@ def createApp():
         return None
 
     return app
-
-def createDatabase(app):
-    baseDir = os.path.abspath(os.path.dirname(__file__))
-    dbPath = os.path.join(baseDir, dbName)
-    if not os.path.exists(dbPath):  # If the database does not exist, creates it
-        with app.app_context():
-            db.create_all()
-        print("Successfully created database")

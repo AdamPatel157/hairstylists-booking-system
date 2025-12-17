@@ -3,7 +3,7 @@ import os
 
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 databasePath = os.path.join(os.path.dirname(__file__), "database.db")
 
@@ -297,7 +297,6 @@ def initDb():
     conn.commit()
     conn.close()
 
-
 # Cross-Parameterised SQL Statements
 
 def getBookingDetails(bookingReference: int):
@@ -458,9 +457,7 @@ def getUpcomingAppointments(customerID: int):
                     f"{firstRow['Date']} {firstRow['StartTime']}", "%d-%m-%Y %H:%M"
                 )
             except ValueError:
-                appointmentDateTime = datetime.strptime(
-                    f"{firstRow['Date']} {firstRow['StartTime']}", "%d-%m-%Y %H:%M:%S"
-                )
+                appointmentDateTime = datetime.strptime(firstRow["Date"], "%d-%m-%Y")
 
             if appointmentDateTime >= now:
                 appointments[bookingRef] = {
@@ -468,7 +465,7 @@ def getUpcomingAppointments(customerID: int):
                     "date": firstRow["Date"],
                     "startTime": firstRow["StartTime"],
                     "endTime": latestEndTime,
-                    "barberName": firstRow["BarberFirstName"] + " " + firstRow["BarberLastName"],
+                    "barberName": f"{firstRow['BarberFirstName']} {firstRow['BarberLastName']}",
                     "totalPrice": servicesByBooking.get(bookingRef, {}).get("totalPrice", 0),
                     "services": servicesByBooking.get(bookingRef, {}).get("services", [])
                 }
@@ -484,6 +481,35 @@ def getUpcomingAppointments(customerID: int):
 
 
 # Parameterised SQL Statements for Customers
+
+
+def getCurrentWeekCommencing():
+    today = date.today()
+    # Sunday week start: (weekday + 1) % 7 gives days since Sunday
+    return today - timedelta(days=(today.weekday() + 1) % 7)
+
+
+def getWeekCommencingStrings():
+    wk = getCurrentWeekCommencing()
+    return wk.strftime("%Y-%m-%d"), wk.strftime("%d-%m-%Y")
+
+def getTimeSlotsForWeek(weekCommencingStr: str):
+    conn = getDbConnection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        rows = cursor.execute("""
+            SELECT *
+            FROM tblTimeSlot
+            WHERE WeekCommencing = ?
+            ORDER BY Day, StartTime
+        """, (weekCommencingStr,)).fetchall()
+        return rows
+    except:
+        print("Database error in getTimeSlotsForWeek")
+        return []
+    finally:
+        conn.close()
 
 
 def createCustomer(firstName, middleName, lastName, email, hashedPassword, phoneNumber):
@@ -634,24 +660,53 @@ def insertBarbers():
     conn.close()
 
 
+def calculateEndTime(startTime: str, durationMinutes: int):
+    startDt = datetime.strptime(startTime, "%H:%M")
+    endDt = startDt + timedelta(minutes = durationMinutes)
+    return endDt.strftime("%H:%M")
+
+
+
+def checkIfSlotsExist(weekCommencingStr: str):
+    conn = getDbConnection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        result = cursor.execute(
+            "SELECT COUNT(*) AS cnt FROM tblTimeSlot WHERE WeekCommencing = ?",
+            (weekCommencingStr,)
+        ).fetchone()
+        return result["cnt"] > 0
+    except Exception as e:
+        print("Database error in checkIfSlotsExist:", e)
+        return False
+    finally:
+        conn.close()
+
+
 def ensureCurrentWeekSlots():
+    weekCommencingStr, _ = getWeekCommencingStrings()
+
+    if checkIfSlotsExist(weekCommencingStr):
+        return  # slots already seeded
+
     conn = getDbConnection()
     cursor = conn.cursor()
 
-    # Get the latest week commencing in the DB
-    cursor.execute("SELECT MAX(WeekCommencing) FROM tblTimeSlot")
-    latestWeek = cursor.fetchone()[0]
+    for barber in getAllBarbers():
+        for day in ["Tue", "Wed", "Thu", "Fri", "Sat"]:
+            for hour in range(10, 18):
+                for minute in (0, 20, 40):
+                    startTime = f"{hour:02d}:{minute:02d}"
+                    endTime = calculateEndTime(startTime, 20)
+
+                    cursor.execute("""
+                        INSERT INTO tblTimeSlot (Day, StartTime, EndTime, WeekCommencing, IsAvailable, BarberID)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (day, startTime, endTime, weekCommencingStr, 1, barber["BarberID"]))
+
+    conn.commit()
     conn.close()
-
-    # Calculate the current week's Sunday
-    today = datetime.today()
-    currentSunday = today - timedelta(days=today.weekday() + 1) if today.weekday() != 6 else today
-    weekCommencing = currentSunday.strftime("%Y-%m-%d")
-
-    # If no slots exist or the latest week is older, generate new ones
-    if latestWeek is None or latestWeek < weekCommencing:
-        from website.database_management import generateWeeklySlots
-        generateWeeklySlots()
 
 
 def generateWeeklySlots():
@@ -849,9 +904,60 @@ def getScheduleForWeek(barberID: int, weekCommencing: str):
 
         return rows
 
-    except Exception as e:
-        print("Database error in getScheduleForWeek:", e)
+    except:
+        print("Database error")
         return []
+    finally:
+        conn.close()
+
+
+def getCustomerEmailByBookingRef(bookingRef: int):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        result = cursor.execute("""
+            SELECT tblCustomer.EmailAddress
+            FROM tblAppointment
+            JOIN tblCustomer ON tblAppointment.CustomerID = tblCustomer.CustomerID
+            WHERE tblAppointment.BookingReference = ?
+        """, (bookingRef,)).fetchone()
+
+        return result["EmailAddress"] if result else None
+    except:
+        print("Database error")
+        return None
+    finally:
+        conn.close()
+
+
+def cancelAppointmentByBookingRef(bookingRef: int):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE tblTimeSlot
+            SET IsAvailable = 1
+            WHERE SlotID IN (
+                SELECT SlotID
+                FROM tblAppointmentSlots
+                WHERE BookingReference = ?
+            )
+        """, (bookingRef,))
+
+        cursor.execute("DELETE FROM tblAppointmentServices WHERE BookingReference = ?", (bookingRef,))
+        cursor.execute("DELETE FROM tblAppointmentSlots WHERE BookingReference = ?", (bookingRef,))
+        cursor.execute("DELETE FROM tblAppointment WHERE BookingReference = ?", (bookingRef,))
+        affected = cursor.rowcount
+
+        conn.commit()
+        return affected > 0 # Returns true if rows were deleted from tblAppointment
+
+    except:
+        print("Database error in cancelAppointmentByBookingRef")
+        return False
+
     finally:
         conn.close()
 

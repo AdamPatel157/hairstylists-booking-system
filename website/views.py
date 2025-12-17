@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, request, flash, redirect
 from flask_login import login_required, current_user
 
-from website.database_management import getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById
+from website.database_management import getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById, getWeekCommencingStrings, getTimeSlotsForWeek
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
 from algorithms.email_communication import sendBookingConfirmationEmail
-from algorithms.validation_functions import validateSlots
+from algorithms.validation_functions import validateSlots, isSlotInPast
 from algorithms.miscellaneous_functions import getActualDate, calculateRequiredSlots, getSlotStartTimeInMinutes
 
 views = Blueprint("views", __name__)
@@ -241,22 +241,21 @@ def selectBarber():
     )
 
 
-@views.route("/select_time_slot", methods = ["GET", "POST"])
+@views.route("/select_time_slot", methods=["GET", "POST"])
 @login_required
 def selectSlot():
-
     appointment = activeAppointments.get(current_user.customerId)
-
     if not appointment:
         flash("Please select services first.", "Error")
         return redirect("/select_services")
 
+    # Ensures current week slots records have been created
     ensureCurrentWeekSlots()
 
+    weekCommencingStr, weekCommencingDisplay = getWeekCommencingStrings()
+
     days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
-
     timeIntervals = []
-
     for hour in range(10, 18):
         for minute in (0, 20, 40):
             formattedTime = f"{hour:02d}:{minute:02d}"
@@ -266,10 +265,11 @@ def selectSlot():
     requiredSlotCount = calculateRequiredSlots(duration)
 
     barber = getBarberById(appointment.getBarberId())
-    barberName = f"{barber["FirstName"]} {barber["LastName"]}"
+    barberName = f"{barber['FirstName']} {barber['LastName']}"
 
-    # Builds slots for the barber
-    allSlots = getAllTimeSlots()
+    # Fetch only current-week slots
+    allSlots = getTimeSlotsForWeek(weekCommencingStr)
+
     slotObjects = []
     slotMap = {}
     idToSlot = {}
@@ -290,9 +290,9 @@ def selectSlot():
             slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
             idToSlot[slot.getSlotId()] = slot
 
-    weekCommencing = slotObjects[0].getWeekCommencing() if slotObjects else "Unknown"
+    weekCommencing = weekCommencingDisplay
 
-    # Reflect any previously selected/locked slots into the objects
+    # Reflects previously selected slots into the objects
     selectionLocked = appointment.isSelectionLocked()
     if appointment.getSlotIds():
         for sid in appointment.getSlotIds():
@@ -306,8 +306,6 @@ def selectSlot():
         if action == "validate":
             selectedSlotIds = [int(sid) for sid in request.form.getlist("selectedSlots")]
 
-            # Validation of slot selections:
-
             if len(selectedSlotIds) != requiredSlotCount:
                 flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
 
@@ -317,10 +315,11 @@ def selectSlot():
             elif not validateSlots(selectedSlotIds, idToSlot):
                 flash("Selected slots must be consecutive and on the same day.", "Error")
 
+            elif any(isSlotInPast(idToSlot[sid]) for sid in selectedSlotIds):
+                flash("You cannot select a time slot that is already in the past.", "Error")
+
             else:
                 appointment.lockSelection()
-
-                # Passes selected slots into appointment class
                 for sid in selectedSlotIds:
                     if sid not in appointment.getSlotIds():
                         appointment.addSlot(sid)
@@ -338,11 +337,8 @@ def selectSlot():
         elif action == "reset":
             appointment.unlockSelection()
             appointment.clearSlots()
-
             for slot in slotObjects:
                 slot.setSelected(False)
-
-            appointment.clearSlots()
             flash("Selection has been reset.", "Success")
             selectionLocked = False
 
@@ -358,6 +354,7 @@ def selectSlot():
         selectionLocked = selectionLocked,
         nav_context = "select_time_slot"
     )
+
 
 
 @views.route("/note_for_barber", methods = ["GET", "POST"])

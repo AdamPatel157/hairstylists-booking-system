@@ -102,8 +102,43 @@ def sendBookingConfirmationEmail(bookingReference: int):
             print("Booking confirmation email sent successfully")
             return True
 
-    except smtplib.SMTPException as error:
-        print("Booking confirmation email failed to send:", error)
+    except smtplib.SMTPException:
+        print("Booking confirmation email failed to send:")
+        return False
+
+
+def sendCancellationEmail(receiverEmail: str, bookingReference: int, cancelReason: str):
+    subject = "Appointment Cancellation Notice"
+    body = (
+        f"Dear Customer,\n\n"
+        f"Your appointment with booking reference {bookingReference} has been cancelled.\n\n"
+        f"Reason: {cancelReason}\n\n"
+        f"If you have any queries, please contact 07773 326497.\n\n"
+    )
+
+    senderEmail = "ganihairbookings@gmail.com"
+    emailPassword = "ykyj bzqn jgos jhmd"
+
+    message = MIMEMultipart()
+    message["From"] = senderEmail
+    message["To"] = receiverEmail
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+
+            server.login(senderEmail, emailPassword)
+            server.send_message(message)
+
+            print("Cancellation email sent successfully")
+            return True
+
+    except smtplib.SMTPException:
+        print("Cancellation email failed to send.")
         return False
 
 
