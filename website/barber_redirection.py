@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import date, timedelta
 
 from website.database_management import getBarberById, getRevenueDataForWeek, getScheduleForWeek
-from .user_friendly_names import userFriendlyServiceNames
+from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
 
@@ -66,6 +66,7 @@ def basicRevenueView():
     today = date.today()
     weekCommencing = today - timedelta(days=(today.weekday() + 1) % 7)
     weekCommencingStr = weekCommencing.strftime("%Y-%m-%d")
+    weekCommencingDisplay = weekCommencing.strftime("%d-%m-%Y")
 
     revenueRows = getRevenueDataForWeek(barberId, weekCommencingStr)
 
@@ -102,7 +103,7 @@ def basicRevenueView():
         "webpages/barber_facing/basic_revenue_view.html",
         firstName = firstName,
         is_admin = isAdmin,
-        week_commencing = weekCommencingStr,
+        week_commencing = weekCommencingDisplay,
         revenue_data = revenueData,
         total_week_revenue = totalWeekRevenue
     )
@@ -124,14 +125,38 @@ def viewSchedule():
     today = date.today()
     weekCommencing = today - timedelta(days=(today.weekday() + 1) % 7)
     weekCommencingStr = weekCommencing.strftime("%Y-%m-%d")
+    weekCommencingDisplay = weekCommencing.strftime("%d-%m-%Y")
 
     rows = getScheduleForWeek(barberId, weekCommencingStr)
 
     schedule = {day: [] for day in ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]}
 
     for row in rows:
-        raw_services = row["Services"].split(", ") if row["Services"] else []
-        friendly_services = [userFriendlyServiceNames(s) for s in raw_services]
+        rawServices = row["Services"].split(", ") if row["Services"] else []
+        rawCategories = row["Categories"].split(", ") if row["Categories"] else []
+
+        friendlyServices = []
+        for serviceName, categoryName in zip(rawServices, rawCategories):
+            friendlyService = userFriendlyServiceNames(serviceName)
+            friendlyCategory = userFriendlyCategoryNames(categoryName)
+
+            if friendlyCategory == "Hair Wash and Dry":
+                if "Rinse" in friendlyService:
+                    friendlyService = friendlyService.replace("Rinse", "Hair Rinse")
+                elif "Wash" in friendlyService:
+                    friendlyService = friendlyService.replace("Wash", "Hair Wash")
+                elif "Conditioner" in friendlyService:
+                    friendlyService = friendlyService.replace("Conditioner Wash", "Hair Conditioner Wash")
+
+            elif friendlyCategory == "Beard Wash and Dry":
+                if "Rinse" in friendlyService:
+                    friendlyService = friendlyService.replace("Rinse", "Beard Rinse")
+                elif "Wash" in friendlyService:
+                    friendlyService = friendlyService.replace("Wash", "Beard Wash")
+                elif "Conditioner" in friendlyService:
+                    friendlyService = friendlyService.replace("Conditioner Wash", "Beard Conditioner Wash")
+
+            friendlyServices.append(friendlyService)
 
         appt = {
             "BookingReference": row["BookingReference"],
@@ -141,11 +166,11 @@ def viewSchedule():
             "EndTime": row["EndTime"],
             "CustomerName": f'{row["FirstName"]} {row["LastName"]}',
             "TotalPrice": round((row["TotalPrice"] or 0.0) + 5.00, 2),
-            "Services": ", ".join(friendly_services),
+            "Services": ", ".join(friendlyServices),
             "Note": row["NoteForBarber"]
         }
 
-        full_day_name = {
+        fullDayName = {
             "Tue": "Tuesday",
             "Wed": "Wednesday",
             "Thu": "Thursday",
@@ -153,16 +178,13 @@ def viewSchedule():
             "Sat": "Saturday"
         }.get(row["Day"], row["Day"])
 
-        if full_day_name in schedule:
-            schedule[full_day_name].append(appt)
+        if fullDayName in schedule:
+            schedule[fullDayName].append(appt)
 
     return render_template(
         "webpages/barber_facing/view_schedule.html",
         firstName = firstName,
         is_admin = isAdmin,
-        week_commencing = weekCommencingStr,
+        week_commencing = weekCommencingDisplay,
         schedule = schedule
     )
-
-
-

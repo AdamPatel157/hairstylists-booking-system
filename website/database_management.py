@@ -814,8 +814,9 @@ def getScheduleForWeek(barberID: int, weekCommencing: str):
                 tblCustomer.FirstName,
                 tblCustomer.LastName,
                 tblAppointment.NoteForBarber,
-                ServiceSummary.TotalPrice,
-                ServiceSummary.Services
+                serviceSummary.TotalPrice,
+                serviceSummary.Services,
+                serviceSummary.Categories
             FROM tblAppointment
             JOIN tblAppointmentSlots
               ON tblAppointment.BookingReference = tblAppointmentSlots.BookingReference
@@ -827,13 +828,14 @@ def getScheduleForWeek(barberID: int, weekCommencing: str):
                 SELECT
                     tblAppointmentServices.BookingReference,
                     SUM(tblService.Price) AS TotalPrice,
-                    GROUP_CONCAT(tblService.ServiceName, ', ') AS Services
+                    GROUP_CONCAT(tblService.ServiceName, ", ") AS Services,
+                    GROUP_CONCAT(tblService.ServiceCategory, ", ") AS Categories
                 FROM tblAppointmentServices
                 JOIN tblService
                   ON tblAppointmentServices.ServiceID = tblService.ServiceID
                 GROUP BY tblAppointmentServices.BookingReference
-            ) AS ServiceSummary
-              ON ServiceSummary.BookingReference = tblAppointment.BookingReference
+            ) AS serviceSummary
+              ON serviceSummary.BookingReference = tblAppointment.BookingReference
             WHERE tblAppointment.BarberID = ?
               AND tblTimeSlot.WeekCommencing = ?
             GROUP BY

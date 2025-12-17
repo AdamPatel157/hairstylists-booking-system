@@ -16,11 +16,6 @@
 }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>My Schedule</h1>
-    <a href="/export_schedule" class="btn btn-warning">EXPORT SCHEDULE</a>
-</div>
-
 <p><strong>Week Beginning:</strong> {{ week_commencing }}</p>
 
 {% for day, appointments in schedule.items() %}
