@@ -1,0 +1,26 @@
+{% extends "bases/barber_base.html" %}
+{% block title %}View Barber Schedules{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><strong>View Barber Schedules</strong></h1>
+<p>Select a barber to view their schedule for the week:</p>
+<br>
+
+<div class="row">
+    {% for barber in barbers %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h4 class="card-title">{{ barber.FirstName }}</h4>
+                <form method="POST">
+                    <input type="hidden" name="barberId" value="{{ barber.BarberID }}">
+                    <button type="submit" class="btn btn-success btn-block">
+                        View Schedule →
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

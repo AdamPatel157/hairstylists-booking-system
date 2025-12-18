@@ -48,6 +48,9 @@ class Barber(User):
         # For the ID number to be used in SQL statements
         return self.barberId
 
+    def getIsAdminAsBoolean(self):
+        return self.isAdmin == 1
+
 
 class Admin(Barber):
     pass

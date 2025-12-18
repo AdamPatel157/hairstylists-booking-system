@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, flash, redirect, request
 from flask_login import login_required, current_user
 
 from algorithms.email_communication import sendCancellationEmail
-from website.database_management import getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
+from algorithms.user_classes import Barber
+from website.database_management import getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
 from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
@@ -183,6 +184,7 @@ def viewSchedule():
         schedule = schedule
     )
 
+
 @barberRedirection.route("/cancel_appointment", methods = ["POST"])
 @login_required
 def cancelAppointment():
@@ -210,3 +212,98 @@ def cancelAppointment():
         flash(f"No appointment found with booking reference {bookingRefInt}.", category="Error")
 
     return redirect("/view_schedule")
+
+
+@barberRedirection.route("/barber_schedules", methods=["GET", "POST"])
+@login_required
+def barberSchedules():
+    if not current_user.getIsAdminAsBoolean():
+        flash("Access denied. This page is for admins only.", category="Error")
+        return redirect("/barber_dashboard")
+
+    if request.method == "POST":
+        selectedBarberId = request.form.get("barberId")
+        if selectedBarberId:
+            return redirect(f"/view_schedule_for_barber/{selectedBarberId}")
+
+    barbers = getAllBarbers()
+    return render_template("webpages/admin_facing/barber_schedules.html", barbers = barbers)
+
+
+@barberRedirection.route("/view_schedule_for_barber/<int:barberId>")
+@login_required
+def viewScheduleForBarber(barberId):
+    if not current_user.getIsAdminAsBoolean():
+        flash("Access denied. Admins only.", category="Error")
+        return redirect("/barber_dashboard")
+
+    barberRecord = getBarberById(barberId)
+    if not barberRecord:
+        flash("Barber record not found.", category="Error")
+        return redirect("/barber_schedules")
+
+    firstName = barberRecord["FirstName"]
+    isAdmin = True
+
+    weekCommencingStr, weekCommencingDisplay = getWeekCommencingStrings()
+    rows = getScheduleForWeek(barberId, weekCommencingStr)
+
+    schedule = {day: [] for day in ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]}
+
+    for row in rows:
+        rawServices = row["Services"].split(", ") if row["Services"] else []
+        rawCategories = row["Categories"].split(", ") if row["Categories"] else []
+
+        friendlyServices = []
+        for serviceName, categoryName in zip(rawServices, rawCategories):
+            friendlyService = userFriendlyServiceNames(serviceName)
+            friendlyCategory = userFriendlyCategoryNames(categoryName)
+
+            if friendlyCategory == "Hair Wash and Dry":
+                if "Rinse" in friendlyService:
+                    friendlyService = friendlyService.replace("Rinse", "Hair Rinse")
+                elif "Wash" in friendlyService:
+                    friendlyService = friendlyService.replace("Wash", "Hair Wash")
+                elif "Conditioner" in friendlyService:
+                    friendlyService = friendlyService.replace("Conditioner Wash", "Hair Conditioner Wash")
+
+            elif friendlyCategory == "Beard Wash and Dry":
+                if "Rinse" in friendlyService:
+                    friendlyService = friendlyService.replace("Rinse", "Beard Rinse")
+                elif "Wash" in friendlyService:
+                    friendlyService = friendlyService.replace("Wash", "Beard Wash")
+                elif "Conditioner" in friendlyService:
+                    friendlyService = friendlyService.replace("Conditioner Wash", "Beard Conditioner Wash")
+
+            friendlyServices.append(friendlyService)
+
+        appt = {
+            "BookingReference": row["BookingReference"],
+            "Day": row["Day"],
+            "Date": row["Date"],
+            "StartTime": row["StartTime"],
+            "EndTime": row["EndTime"],
+            "CustomerName": f'{row["FirstName"]} {row["LastName"]}',
+            "TotalPrice": round((row["TotalPrice"] or 0.0) + 5.00, 2),
+            "Services": ", ".join(friendlyServices),
+            "Note": row["NoteForBarber"]
+        }
+
+        fullDayName = {
+            "Tue": "Tuesday",
+            "Wed": "Wednesday",
+            "Thu": "Thursday",
+            "Fri": "Friday",
+            "Sat": "Saturday"
+        }.get(row["Day"], row["Day"])
+
+        if fullDayName in schedule:
+            schedule[fullDayName].append(appt)
+
+    return render_template(
+        "webpages/barber_facing/view_schedule.html",
+        firstName=firstName,
+        is_admin=isAdmin,
+        week_commencing=weekCommencingDisplay,
+        schedule=schedule
+    )
