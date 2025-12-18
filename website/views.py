@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect
 from flask_login import login_required, current_user
 
-from website.database_management import getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById, getWeekCommencingStrings, getTimeSlotsForWeek
+from website.database_management import getBookedSlotIdsForWeek, getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById, getWeekCommencingStrings, getTimeSlotsForWeek
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 from algorithms.appointment_classes import Appointment, TimeSlot
 from algorithms.email_communication import sendBookingConfirmationEmail
@@ -267,8 +267,9 @@ def selectSlot():
     barber = getBarberById(appointment.getBarberId())
     barberName = f"{barber['FirstName']} {barber['LastName']}"
 
-    # Fetch only current-week slots
+    # Fetches current-week slots and booked slot ids
     allSlots = getTimeSlotsForWeek(weekCommencingStr)
+    bookedSlotIds = getBookedSlotIdsForWeek(weekCommencingStr)
 
     slotObjects = []
     slotMap = {}
@@ -276,6 +277,7 @@ def selectSlot():
 
     for row in allSlots:
         if row["BarberID"] == appointment.getBarberId():
+            isBooked = row["SlotID"] in bookedSlotIds
             slot = TimeSlot(
                 slotId = row["SlotID"],
                 barberId = row["BarberID"],
@@ -284,7 +286,8 @@ def selectSlot():
                 endTime = row["EndTime"],
                 weekCommencing = row["WeekCommencing"],
                 isAvailable = bool(row["IsAvailable"]),
-                isSelected = False
+                isSelected = False,
+                isBooked = isBooked
             )
             slotObjects.append(slot)
             slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
@@ -309,7 +312,7 @@ def selectSlot():
             if len(selectedSlotIds) != requiredSlotCount:
                 flash(f"You must select exactly {requiredSlotCount} time slots.", "Error")
 
-            elif any(not idToSlot[sid].isAvailable() for sid in selectedSlotIds):
+            elif any((not idToSlot[sid].isAvailable()) or idToSlot[sid].isBooked() for sid in selectedSlotIds):
                 flash("One or more selected slots are unavailable.", "Error")
 
             elif not validateSlots(selectedSlotIds, idToSlot):
@@ -354,7 +357,6 @@ def selectSlot():
         selectionLocked = selectionLocked,
         nav_context = "select_time_slot"
     )
-
 
 
 @views.route("/note_for_barber", methods = ["GET", "POST"])

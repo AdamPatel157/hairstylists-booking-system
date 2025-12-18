@@ -3,7 +3,8 @@ from flask_login import login_required, current_user
 
 from algorithms.email_communication import sendCancellationEmail
 from algorithms.user_classes import Barber
-from website.database_management import getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
+from algorithms.appointment_classes import TimeSlot
+from website.database_management import setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
 from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
@@ -182,6 +183,89 @@ def viewSchedule():
         is_admin = isAdmin,
         week_commencing = weekCommencingDisplay,
         schedule = schedule
+    )
+
+
+@barberRedirection.route("/block_time_slots", methods = ["GET", "POST"])
+@login_required
+def blockTimeSlots():
+    barberId = current_user.getBarberId()
+    barberRecord = getBarberById(barberId)
+    isAdmin = current_user.getIsAdminAsBoolean()
+
+    if not barberRecord:
+        flash("Barber record not found.", "Error")
+        return redirect("/login")
+
+    ensureCurrentWeekSlots()
+    weekCommencingStr, weekCommencingDisplay = getWeekCommencingStrings()
+
+    days = ["Tue", "Wed", "Thu", "Fri", "Sat"]
+    timeIntervals = []
+    for hour in range(10, 18):
+        for minute in (0, 20, 40):
+            formattedTime = f"{hour:02d}:{minute:02d}"
+            timeIntervals.append(formattedTime)
+
+    barberName = f"{barberRecord['FirstName']} {barberRecord['LastName']}"
+    allSlots = getTimeSlotsForWeek(weekCommencingStr)
+
+    slotObjects = []
+    slotMap = {}
+    idToSlot = {}
+
+    availableSlotCount = 0
+    unavailableSlotCount = 0
+
+    bookedSlotIds = getBookedSlotIdsForWeek(weekCommencingStr)
+
+    for row in allSlots:
+        if row["BarberID"] == barberId:
+            isBooked = row["SlotID"] in bookedSlotIds
+            slot = TimeSlot(
+                slotId = row["SlotID"],
+                barberId = row["BarberID"],
+                dayOfWeek = row["Day"],
+                startTime = row["StartTime"],
+                endTime = row["EndTime"],
+                weekCommencing = row["WeekCommencing"],
+                isAvailable = bool(row["IsAvailable"]),
+                isSelected = False,
+                isBooked = isBooked
+            )
+            slotObjects.append(slot)
+            slotMap[(slot.getDayOfWeek(), slot.getStartTime())] = slot
+            idToSlot[slot.getSlotId()] = slot
+
+            if slot.isAvailable():
+                availableSlotCount += 1
+            else:
+                unavailableSlotCount += 1
+
+    if request.method == "POST":
+        selectedSlotIds = [int(sid) for sid in request.form.getlist("selectedSlots")]
+
+        for slot in slotObjects:
+            slot.setSelected(slot.getSlotId() in selectedSlotIds)
+
+        # Blocks newly selected slots
+        for slot in slotObjects:
+            if slot.isSelected() and slot.isAvailable():
+                setSlotAvailability(slot.getSlotId(), False)
+
+        flash("Your slot availability has been updated.", "Success")
+        return redirect("/block_time_slots")
+
+    return render_template(
+        "webpages/barber_facing/block_time_slots.html",
+        barberName = barberName,
+        weekCommencing = weekCommencingDisplay,
+        availableSlotCount = availableSlotCount,
+        unavailableSlotCount = unavailableSlotCount,
+        days = days,
+        timeIntervals = timeIntervals,
+        slotMap = slotMap,
+        is_admin = isAdmin
     )
 
 

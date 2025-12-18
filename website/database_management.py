@@ -493,6 +493,7 @@ def getWeekCommencingStrings():
     wk = getCurrentWeekCommencing()
     return wk.strftime("%Y-%m-%d"), wk.strftime("%d-%m-%Y")
 
+
 def getTimeSlotsForWeek(weekCommencingStr: str):
     conn = getDbConnection()
     conn.row_factory = sqlite3.Row
@@ -665,6 +666,21 @@ def calculateEndTime(startTime: str, durationMinutes: int):
     endDt = startDt + timedelta(minutes = durationMinutes)
     return endDt.strftime("%H:%M")
 
+
+def setSlotAvailability(slotId: int, available: bool):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE tblTimeSlot
+            SET IsAvailable = ?
+            WHERE SlotID = ?
+        """, (1 if available else 0, slotId))
+        conn.commit()
+    except:
+        print("Database error in setSlotAvailability")
+    finally:
+        conn.close()
 
 
 def checkIfSlotsExist(weekCommencingStr: str):
@@ -907,6 +923,27 @@ def getScheduleForWeek(barberID: int, weekCommencing: str):
     except:
         print("Database error")
         return []
+    finally:
+        conn.close()
+
+
+def getBookedSlotIdsForWeek(weekCommencingStr: str) -> set:
+    conn = getDbConnection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        rows = cursor.execute("""
+            SELECT tblTimeSlot.SlotID
+            FROM tblTimeSlot
+            INNER JOIN tblAppointmentSlots ON tblTimeSlot.SlotID = tblAppointmentSlots.SlotID
+            WHERE tblTimeSlot.WeekCommencing = ?
+        """, (weekCommencingStr,)).fetchall()
+
+        bookedSlotIds = {row["SlotID"] for row in rows}
+        return bookedSlotIds
+    except:
+        print("Database error in getBookedSlotIdsForWeek")
+        return set()
     finally:
         conn.close()
 

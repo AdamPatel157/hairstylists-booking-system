@@ -18,6 +18,7 @@
             <div class="slot-key">
                 <span class="slot available">Available</span>
                 <span class="slot unavailable">Unavailable</span>
+                <span class="slot booked">Booked</span>
                 <span class="slot selected">Selected</span>
             </div>
         </div>
@@ -41,21 +42,23 @@
                     {% for time in timeIntervals %}
                         {% set slot = slotMap.get((day, time)) %}
                         {% set isUnavailable = (not slot or not slot.isAvailable()) %}
+                        {% set isBooked = slot and slot.isBooked() %}
                         {% set isSelected = slot and slot.isSelected() %}
                         <td class="
-                            {% if isUnavailable %}cell-unavailable{% elif isSelected %}cell-selected{% else %}cell-available{% endif %}
+                            {% if isBooked %}cell-booked
+                            {% elif isUnavailable %}cell-unavailable
+                            {% elif isSelected %}cell-selected
+                            {% else %}cell-available
+                            {% endif %}
                         ">
                             {% if slot %}
-                                {% if isUnavailable %}
-                                    <!-- Unavailable: red cell, no interactive checkbox -->
+                                {% if isUnavailable or isBooked %}
                                     <div class="cell-content">
-                                        <!-- Hidden checkbox to preserve layout focus, but entirely invisible and disabled -->
                                         <input type="checkbox" disabled class="hidden-checkbox">
                                     </div>
                                 {% else %}
                                     <div class="cell-content">
                                         {% if selectionLocked %}
-                                            <!-- When locked, make invisible and non-interactive -->
                                             <input type="checkbox" class="hidden-checkbox" disabled>
                                         {% else %}
                                             <input type="checkbox"
@@ -67,7 +70,6 @@
                                     </div>
                                 {% endif %}
                             {% else %}
-                                <!-- No slot object: treat as unavailable -->
                                 <div class="cell-content">
                                     <input type="checkbox" disabled class="hidden-checkbox">
                                 </div>
@@ -99,7 +101,6 @@
 </div>
 
 <style>
-
 .full-width {
     margin: 0;
     padding: 0 10px;
@@ -133,8 +134,10 @@
     padding: 6px;
 }
 
+/* Available = green; Unavailable (blocked) = orange; Booked = red; Selected = yellow */
 .cell-available { background-color: #c8f7c5; }
-.cell-unavailable { background-color: #f7c5c5; }
+.cell-unavailable { background-color: #f7d8b8; }
+.cell-booked { background-color: #f7c5c5; }
 .cell-selected { background-color: #f7f3c5; }
 
 .cell-content {
@@ -165,7 +168,8 @@
     border-radius: 4px;
 }
 .slot-key .available { background-color: #c8f7c5; }
-.slot-key .unavailable { background-color: #f7c5c5; }
+.slot-key .unavailable { background-color: #f7d8b8; }
+.slot-key .booked { background-color: #f7c5c5; }
 .slot-key .selected { background-color: #f7f3c5; }
 </style>
 

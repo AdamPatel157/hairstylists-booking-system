@@ -147,7 +147,7 @@ class Appointment:
 
 class TimeSlot:
     def __init__(self, slotId: int, barberId: int, dayOfWeek: str, startTime: str, endTime: str,
-                 weekCommencing: str, isAvailable: bool, isSelected: bool = False):
+                 weekCommencing: str, isAvailable: bool, isSelected: bool = False, isBooked: bool = False):
         self.__slotId = slotId
         self.__barberId = barberId
         self.__dayOfWeek = dayOfWeek
@@ -156,6 +156,7 @@ class TimeSlot:
         self.__weekCommencing = weekCommencing
         self.__isAvailable = isAvailable
         self.__isSelected = isSelected
+        self.__isBooked = isBooked
 
     # Getters
     def getSlotId(self):
@@ -182,12 +183,18 @@ class TimeSlot:
     def isSelected(self):
         return self.__isSelected
 
+    def isBooked(self):
+        return self.__isBooked
+
     # Setters
     def setSelected(self, selected: bool):
         self.__isSelected = selected
 
     def setAvailable(self, available: bool):
         self.__isAvailable = available
+
+    def setBooked(self, booked: bool):
+        self.__isBooked = booked
 
     # Methods
     def toDict(self):
@@ -199,5 +206,6 @@ class TimeSlot:
             "EndTime": self.__endTime,
             "WeekCommencing": self.__weekCommencing,
             "IsAvailable": self.__isAvailable,
-            "IsSelected": self.__isSelected
+            "IsSelected": self.__isSelected,
+            "IsBooked": self.__isBooked
         }

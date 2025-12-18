@@ -1,0 +1,161 @@
+{% extends "bases/full_width_block_slots_base.html" %}
+{% block title %}Block Time Slots{% endblock %}
+
+{% block content %}
+<div class="full-width">
+    <br>
+    <h1 class="mb-4"><strong>Block Time Slots</strong></h1>
+
+    <div class="info-row">
+        <div class="info-left">
+            <p><strong>Number of Available Slots:</strong> {{ availableSlotCount }}</p>
+            <p><strong>Number of Unavailable Slots:</strong> {{ unavailableSlotCount }}</p>
+            <p><strong>Schedule of:</strong> {{ barberName }}</p>
+            <p><strong>Week Commencing:</strong> {{ weekCommencing }}</p>
+        </div>
+        <div class="info-right">
+            <div class="slot-key">
+                <span class="slot available">Barber Available</span>
+                <span class="slot unavailable">Barber Unavailable</span>
+                <span class="slot booked">Booked</span>
+                <span class="slot selected">Selected</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main form -->
+    <form method="POST">
+        <table class="slot-grid">
+            <thead>
+                <tr>
+                    <th>Day / Time</th>
+                    {% for time in timeIntervals %}
+                        <th>{{ time }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr>
+                    <td class="day-header"><strong>{{ day }}</strong></td>
+                    {% for time in timeIntervals %}
+                        {% set slot = slotMap.get((day, time)) %}
+                        {% set isBooked = slot and slot.isBooked() %}
+                        {% set isUnavailable = slot and not slot.isAvailable() and not isBooked %}
+                        {% set isSelected = slot and slot.isSelected() %}
+                        <td class="
+                            {% if isBooked %}cell-booked
+                            {% elif isUnavailable %}cell-unavailable
+                            {% elif isSelected %}cell-selected
+                            {% else %}cell-available
+                            {% endif %}
+                        ">
+                            {% if slot %}
+                                <div class="cell-content">
+                                    {% if isBooked %}
+                                        <input type="checkbox" disabled class="hidden-checkbox">
+                                    {% else %}
+                                        <input type="checkbox"
+                                               name="selectedSlots"
+                                               value="{{ slot.getSlotId() }}"
+                                               class="slot-checkbox"
+                                               {% if isSelected %}checked{% endif %}>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="cell-content">
+                                    <input type="checkbox" disabled class="hidden-checkbox">
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="slot-actions mt-4">
+            <button type="submit" name="action" value="save" class="btn btn-success">
+                Save Changes
+            </button>
+            <a href="/barber_dashboard" class="btn btn-secondary ml-2">Return to Barber Dashboard</a>
+        </div>
+    </form>
+
+    <div class="mt-4">
+        <p class="text-danger"><strong>Note:</strong> If you need to block a time slot that has been booked by a customer, please contact an admin for them to cancel that appointment first.</p>
+    </div>
+</div>
+
+<style>
+.full-width {
+    margin: 0;
+    padding: 0 10px;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+.info-left p, .info-right p {
+    margin: 0 0 5px;
+}
+
+.slot-grid {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+    table-layout: fixed;
+}
+.slot-grid th, .slot-grid td {
+    border: 1px solid #ccc;
+    text-align: center;
+    padding: 0;
+    min-width: 60px;
+}
+.day-header {
+    padding: 6px;
+}
+
+.cell-available { background-color: #c8f7c5; }
+.cell-unavailable { background-color: #f7c5c5; }
+.cell-booked { background-color: #c5d8f7; }
+.cell-selected { background-color: #f7f3c5; }
+
+.cell-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 6px;
+}
+
+.slot-checkbox {
+    width: 20px;
+    height: 20px;
+}
+
+.hidden-checkbox {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+}
+
+.slot-key span {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+.slot-key .available { background-color: #c8f7c5; }
+.slot-key .unavailable { background-color: #f7c5c5; }
+.slot-key .booked { background-color: #c5d8f7; }
+.slot-key .selected { background-color: #f7f3c5; }
+</style>
+{% endblock %}
