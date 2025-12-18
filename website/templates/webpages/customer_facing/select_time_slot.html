@@ -127,25 +127,24 @@
 .slot-grid th, .slot-grid td {
     border: 1px solid #ccc;
     text-align: center;
-    padding: 0; /* let the cell-content define spacing */
+    padding: 0;
     min-width: 60px;
 }
 .day-header {
     padding: 6px;
 }
 
-/* Available = green; Unavailable (blocked) = orange; Booked = red; Selected = yellow */
 .cell-available { background-color: #c8f7c5; }
-.cell-unavailable { background-color: #f7d8b8; }
-.cell-booked { background-color: #f7c5c5; }
+.cell-unavailable { background-color: #f7c5c5; }
+.cell-booked { background-color: #f7d8b8; }
 .cell-selected { background-color: #f7f3c5; }
 
 .cell-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px; /* visual touch target height */
-    padding: 6px;     /* small breathing room */
+    min-height: 44px;
+    padding: 6px;
 }
 
 .slot-checkbox {
@@ -168,8 +167,8 @@
     border-radius: 4px;
 }
 .slot-key .available { background-color: #c8f7c5; }
-.slot-key .unavailable { background-color: #f7d8b8; }
-.slot-key .booked { background-color: #f7c5c5; }
+.slot-key .unavailable { background-color: #f7c5c5; }
+.slot-key .booked { background-color: #f7d8b8; }
 .slot-key .selected { background-color: #f7f3c5; }
 </style>
 

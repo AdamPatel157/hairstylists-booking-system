@@ -248,10 +248,13 @@ def blockTimeSlots():
         for slot in slotObjects:
             slot.setSelected(slot.getSlotId() in selectedSlotIds)
 
-        # Blocks newly selected slots
+        # Toggles availability based on selection
         for slot in slotObjects:
-            if slot.isSelected() and slot.isAvailable():
-                setSlotAvailability(slot.getSlotId(), False)
+            if slot.isSelected():
+                if slot.isAvailable():
+                    setSlotAvailability(slot.getSlotId(), False)
+                else:
+                    setSlotAvailability(slot.getSlotId(), True)
 
         flash("Your slot availability has been updated.", "Success")
         return redirect("/block_time_slots")
