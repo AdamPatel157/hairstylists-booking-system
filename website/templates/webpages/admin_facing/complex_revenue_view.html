@@ -1,0 +1,90 @@
+{% extends "bases/barber_base.html" %}
+{% block title %}Comprehensive Revenue View{% endblock %}
+{% block content %}
+
+<h1 class="mb-4"><strong>Comprehensive Revenue View</strong></h1>
+
+<!-- Date Range Input Boxes -->
+<form method="POST" class="mb-5">
+    <div class="form-row">
+        <div class="col-md-4 mb-3">
+            <label for="startDate"><strong>Start Date</strong></label>
+            <input type="date" class="form-control" name="startDate" id="startDate" required
+                   value="{{ startDate }}">
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="endDate"><strong>End Date</strong></label>
+            <input type="date" class="form-control" name="endDate" id="endDate" required
+                   value="{{ endDate }}">
+        </div>
+        <div class="col-md-4 d-flex align-items-end mb-3">
+            <button type="submit" class="btn btn-primary w-100">Generate Revenue Report</button>
+        </div>
+    </div>
+</form>
+
+
+<!-- Weekly Shop Revenue Summary -->
+<h4><strong>Weekly Shop Revenue Summary</strong></h4>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>Week Commencing</th>
+            <th>Number of Appointments</th>
+            <th>Total Revenue (£)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in weeklySummary %}
+        <tr>
+            <td>{{ row["WeekCommencing"] }}</td>
+            <td>{{ row["AppointmentCount"] }}</td>
+            <td>{{ "%.2f"|format(row["TotalRevenue"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Revenue by Barber -->
+<h4 class="mt-5"><strong>Revenue by Barber</strong></h4>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>Barber</th>
+            <th>Number of Appointments</th>
+            <th>Total Revenue (£)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in barberSummary %}
+        <tr>
+            <td>{{ row["BarberName"] }}</td>
+            <td>{{ row["AppointmentCount"] }}</td>
+            <td>{{ "%.2f"|format(row["TotalRevenue"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Monthly Shop Revenue Summary -->
+<h4 class="mt-5"><strong>Monthly Shop Revenue Summary</strong></h4>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>MM/YY</th>
+            <th>Number of Appointments</th>
+            <th>Total Revenue (£)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in monthlySummary %}
+        <tr>
+            <td>{{ row["MonthYear"] }}</td>
+            <td>{{ row["AppointmentCount"] }}</td>
+            <td>{{ "%.2f"|format(row["TotalRevenue"]) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

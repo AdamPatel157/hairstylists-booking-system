@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from algorithms.email_communication import sendCancellationEmail
 from algorithms.user_classes import Barber
 from algorithms.appointment_classes import TimeSlot
-from website.database_management import customerExists, getBlacklistedCustomers, getAllCustomers, addCustomerToBlacklist, removeCustomerFromBlacklist, setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
+from website.database_management import getWeeklyRevenueSummary, getMonthlyRevenueSummary, getRevenueByBarber, customerExists, getBlacklistedCustomers, getAllCustomers, addCustomerToBlacklist, removeCustomerFromBlacklist, setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
 from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
@@ -433,5 +433,42 @@ def manageCustomers():
         "webpages/admin_facing/manage_customers.html",
         customerList = customerList,
         blacklistedCustomers = blacklistedCustomers,
+        is_admin = True
+    )
+
+
+@barberRedirection.route("/complex_revenue_view", methods=["GET", "POST"])
+@login_required
+def complexRevenueView():
+    if not current_user.getIsAdminAsBoolean():
+        flash("Access denied. Admins only.", "Error")
+        return redirect("/barber_dashboard")
+
+    weeklySummary = []
+    barberSummary = []
+    monthlySummary = []
+
+    startDate = ""
+    endDate = ""
+
+    if request.method == "POST":
+        startDate = request.form.get("startDate")
+        endDate = request.form.get("endDate")
+
+        if startDate and endDate:
+            weeklySummary = getWeeklyRevenueSummary(startDate, endDate)
+            barberSummary = getRevenueByBarber(startDate, endDate)
+            monthlySummary = getMonthlyRevenueSummary(startDate, endDate)
+        else:
+            flash("Please enter both start and end dates.", "Error")
+
+    return render_template(
+        "webpages/admin_facing/complex_revenue_view.html",
+        firstName = current_user.firstName,
+        weeklySummary = weeklySummary,
+        barberSummary = barberSummary,
+        monthlySummary = monthlySummary,
+        startDate = startDate,
+        endDate = endDate,
         is_admin = True
     )

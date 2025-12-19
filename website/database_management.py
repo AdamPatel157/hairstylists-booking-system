@@ -927,7 +927,7 @@ def getScheduleForWeek(barberID: int, weekCommencing: str):
         conn.close()
 
 
-def getBookedSlotIdsForWeek(weekCommencingStr: str) -> set:
+def getBookedSlotIdsForWeek(weekCommencingStr: str):
     conn = getDbConnection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -1028,7 +1028,7 @@ def getBlacklistedCustomers():
         conn.close()
 
 
-def customerExists(customerId: int) -> bool:
+def customerExists(customerId: int):
     conn = getDbConnection()
     cursor = conn.cursor()
     try:
@@ -1040,7 +1040,7 @@ def customerExists(customerId: int) -> bool:
         conn.close()
 
 
-def addCustomerToBlacklist(customerId: int) -> bool:
+def addCustomerToBlacklist(customerId: int):
     if not customerExists(customerId):
         return False
     conn = getDbConnection()
@@ -1054,7 +1054,7 @@ def addCustomerToBlacklist(customerId: int) -> bool:
     conn.close()
     return True
 
-def removeCustomerFromBlacklist(customerId: int) -> bool:
+def removeCustomerFromBlacklist(customerId: int):
     if not customerExists(customerId):
         return False
     conn = getDbConnection()
@@ -1067,6 +1067,160 @@ def removeCustomerFromBlacklist(customerId: int) -> bool:
     conn.commit()
     conn.close()
     return True
+
+
+def getWeeklyRevenueSummary(startDate: str, endDate: str):
+
+    startIso = datetime.strptime(startDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+    endIso = datetime.strptime(endDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        allRows = cursor.execute("""
+            SELECT BookingReference, Date
+            FROM tblAppointment
+        """).fetchall()
+
+        validBookingRefs = []
+        for row in allRows:
+            bookingRef = row["BookingReference"]
+            storedDate = row["Date"]
+
+            isoDate = convertDateTimeFormat(storedDate)
+
+            if startIso <= isoDate <= endIso:
+                validBookingRefs.append(bookingRef)
+
+        if not validBookingRefs:
+            return []
+
+        placeholders = ",".join("?" for _ in validBookingRefs)
+
+        rows = cursor.execute(f"""
+            SELECT 
+                tblTimeSlot.WeekCommencing,
+                COUNT(DISTINCT tblAppointment.BookingReference) AS AppointmentCount,
+                SUM(tblService.Price) AS TotalRevenue
+            FROM tblAppointment
+            JOIN tblAppointmentServices 
+                ON tblAppointment.BookingReference = tblAppointmentServices.BookingReference
+            JOIN tblService 
+                ON tblAppointmentServices.ServiceID = tblService.ServiceID
+            JOIN tblAppointmentSlots 
+                ON tblAppointment.BookingReference = tblAppointmentSlots.BookingReference
+            JOIN tblTimeSlot 
+                ON tblAppointmentSlots.SlotID = tblTimeSlot.SlotID
+            WHERE tblAppointment.BookingReference IN ({placeholders})
+            GROUP BY tblTimeSlot.WeekCommencing
+            ORDER BY tblTimeSlot.WeekCommencing
+        """, validBookingRefs).fetchall()
+
+        return rows
+
+    finally:
+        conn.close()
+
+
+def getRevenueByBarber(startDate: str, endDate: str):
+
+    startIso = datetime.strptime(startDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+    endIso = datetime.strptime(endDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        allRows = cursor.execute("""
+            SELECT BookingReference, Date
+            FROM tblAppointment
+        """).fetchall()
+
+        validBookingRefs = []
+        for row in allRows:
+            bookingRef = row["BookingReference"]
+            isoDate = convertDateTimeFormat(row["Date"])
+            if startIso <= isoDate <= endIso:
+                validBookingRefs.append(bookingRef)
+
+        if not validBookingRefs:
+            return []
+
+        placeholders = ",".join("?" for _ in validBookingRefs)
+
+        rows = cursor.execute(f"""
+            SELECT 
+                tblBarber.FirstName || ' ' || tblBarber.LastName AS BarberName,
+                COUNT(DISTINCT tblAppointment.BookingReference) AS AppointmentCount,
+                SUM(tblService.Price) AS TotalRevenue
+            FROM tblAppointment
+            JOIN tblBarber 
+                ON tblAppointment.BarberID = tblBarber.BarberID
+            JOIN tblAppointmentServices 
+                ON tblAppointment.BookingReference = tblAppointmentServices.BookingReference
+            JOIN tblService 
+                ON tblAppointmentServices.ServiceID = tblService.ServiceID
+            WHERE tblAppointment.BookingReference IN ({placeholders})
+            GROUP BY tblBarber.BarberID
+            ORDER BY tblBarber.LastName, tblBarber.FirstName
+        """, validBookingRefs).fetchall()
+        return rows
+
+    finally:
+        conn.close()
+
+
+def getMonthlyRevenueSummary(startDate: str, endDate: str):
+    from datetime import datetime
+
+    startIso = datetime.strptime(startDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+    endIso = datetime.strptime(endDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+
+    conn = getDbConnection()
+    cursor = conn.cursor()
+
+    try:
+        allRows = cursor.execute("""
+            SELECT BookingReference, Date
+            FROM tblAppointment
+        """).fetchall()
+
+        validBookingRefs = []
+        for row in allRows:
+            bookingRef = row["BookingReference"]
+            isoDate = convertDateTimeFormat(row["Date"])
+            if startIso <= isoDate <= endIso:
+                validBookingRefs.append(bookingRef)
+
+        if not validBookingRefs:
+            return []
+
+        placeholders = ",".join("?" for _ in validBookingRefs)
+
+        rows = cursor.execute(f"""
+            SELECT 
+                SUBSTR(tblAppointment.Date, 4, 2) || '/' || SUBSTR(tblAppointment.Date, 7, 4) AS MonthYear,
+                COUNT(DISTINCT tblAppointment.BookingReference) AS AppointmentCount,
+                SUM(tblService.Price) AS TotalRevenue
+            FROM tblAppointment
+            JOIN tblAppointmentServices 
+                ON tblAppointment.BookingReference = tblAppointmentServices.BookingReference
+            JOIN tblService 
+                ON tblAppointmentServices.ServiceID = tblService.ServiceID
+            WHERE tblAppointment.BookingReference IN ({placeholders})
+            GROUP BY SUBSTR(tblAppointment.Date, 4, 2), SUBSTR(tblAppointment.Date, 7, 4)
+            ORDER BY SUBSTR(tblAppointment.Date, 7, 4), SUBSTR(tblAppointment.Date, 4, 2)
+        """, validBookingRefs).fetchall()
+
+        return rows
+
+    finally:
+        conn.close()
+
+
+def convertDateTimeFormat(dateStr: str):
+    return datetime.strptime(dateStr, "%d-%m-%Y").strftime("%Y-%m-%d")
 
 
 # Unverified User SQL Statements
