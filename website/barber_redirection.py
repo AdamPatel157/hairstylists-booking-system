@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from algorithms.email_communication import sendCancellationEmail
 from algorithms.user_classes import Barber
 from algorithms.appointment_classes import TimeSlot
-from website.database_management import setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
+from website.database_management import customerExists, getBlacklistedCustomers, getAllCustomers, addCustomerToBlacklist, removeCustomerFromBlacklist, setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
 from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
@@ -321,12 +321,12 @@ def barberSchedules():
 @login_required
 def viewScheduleForBarber(barberId):
     if not current_user.getIsAdminAsBoolean():
-        flash("Access denied. Admins only.", category="Error")
+        flash("Access denied. Admins only.", category = "Error")
         return redirect("/barber_dashboard")
 
     barberRecord = getBarberById(barberId)
     if not barberRecord:
-        flash("Barber record not found.", category="Error")
+        flash("Barber record not found.", category = "Error")
         return redirect("/barber_schedules")
 
     firstName = barberRecord["FirstName"]
@@ -389,8 +389,49 @@ def viewScheduleForBarber(barberId):
 
     return render_template(
         "webpages/barber_facing/view_schedule.html",
-        firstName=firstName,
-        is_admin=isAdmin,
-        week_commencing=weekCommencingDisplay,
-        schedule=schedule
+        firstName = firstName,
+        is_admin = isAdmin,
+        week_commencing = weekCommencingDisplay,
+        schedule = schedule
+    )
+
+@barberRedirection.route("/manage_customers", methods = ["GET", "POST"])
+@login_required
+def manageCustomers():
+    if not current_user.getIsAdminAsBoolean():
+        flash("Access denied. Admins only.", "Error")
+        return redirect("/barber_dashboard")
+
+    if request.method == "POST":
+        addId = request.form.get("addId")
+        removeId = request.form.get("removeId")
+
+        if addId:
+            try:
+                success = addCustomerToBlacklist(int(addId))
+                if success:
+                    flash(f"Customer {addId} added to blacklist.", "Success")
+                else:
+                    flash(f"Customer ID {addId} does not exist.", "Error")
+            except:
+                flash("Failed to add customer to blacklist.", "Error")
+
+        if removeId:
+            try:
+                success = removeCustomerFromBlacklist(int(removeId))
+                if success:
+                    flash(f"Customer {removeId} removed from blacklist.", "Success")
+                else:
+                    flash(f"Customer ID {removeId} does not exist.", "Error")
+            except:
+                flash("Failed to remove customer from blacklist.", "Error")
+
+    customerList = getAllCustomers()
+    blacklistedCustomers = getBlacklistedCustomers()
+
+    return render_template(
+        "webpages/admin_facing/manage_customers.html",
+        customerList = customerList,
+        blacklistedCustomers = blacklistedCustomers,
+        is_admin = True
     )

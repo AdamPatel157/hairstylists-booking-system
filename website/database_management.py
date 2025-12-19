@@ -999,6 +999,76 @@ def cancelAppointmentByBookingRef(bookingRef: int):
         conn.close()
 
 
+def getAllCustomers():
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        rows = cursor.execute("""
+            SELECT CustomerID, FirstName, MiddleName, LastName, EmailAddress, IsBlackListed
+            FROM tblCustomer
+            ORDER BY CustomerID
+        """).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def getBlacklistedCustomers():
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        rows = cursor.execute("""
+            SELECT CustomerID, FirstName, MiddleName, LastName, EmailAddress, IsBlackListed
+            FROM tblCustomer
+            WHERE IsBlackListed = 1
+            ORDER BY CustomerID
+        """).fetchall()
+        return rows
+    finally:
+        conn.close()
+
+
+def customerExists(customerId: int) -> bool:
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        result = cursor.execute("""
+            SELECT 1 FROM tblCustomer WHERE CustomerID = ?
+        """, (customerId,)).fetchone()
+        return result is not None
+    finally:
+        conn.close()
+
+
+def addCustomerToBlacklist(customerId: int) -> bool:
+    if not customerExists(customerId):
+        return False
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE tblCustomer
+        SET IsBlackListed = 1
+        WHERE CustomerID = ?
+    """, (customerId,))
+    conn.commit()
+    conn.close()
+    return True
+
+def removeCustomerFromBlacklist(customerId: int) -> bool:
+    if not customerExists(customerId):
+        return False
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE tblCustomer
+        SET IsBlackListed = 0
+        WHERE CustomerID = ?
+    """, (customerId,))
+    conn.commit()
+    conn.close()
+    return True
+
+
 # Unverified User SQL Statements
 
 def createUnverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,

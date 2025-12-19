@@ -1,0 +1,76 @@
+{% extends "bases/barber_base.html" %}
+
+{% block title %}Manage Customers{% endblock %}
+{% block content %}
+
+<h1 class="mb-4"><strong>Customer Management</strong></h1>
+
+<!-- Customer List -->
+<h4><strong>Customer List</strong></h4>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>Customer ID</th>
+            <th>First Name</th>
+            <th>Middle Name</th>
+            <th>Last Name</th>
+            <th>Email Address</th>
+            <th>Is Blacklisted?</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for customer in customerList %}
+        <tr>
+            <td>{{ customer["CustomerID"] }}</td>
+            <td>{{ customer["FirstName"] }}</td>
+            <td>{{ customer["MiddleName"] or "" }}</td>
+            <td>{{ customer["LastName"] }}</td>
+            <td>{{ customer["EmailAddress"] }}</td>
+            <td>{{ "True" if customer["IsBlackListed"] else "False" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Blacklisted Customers List -->
+<h4 class="mt-5"><strong>Blacklisted Customers</strong></h4>
+<table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>Customer ID</th>
+            <th>First Name</th>
+            <th>Middle Name</th>
+            <th>Last Name</th>
+            <th>Email Address</th>
+            <th>Is Blacklisted?</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for customer in blacklistedCustomers %}
+        <tr>
+            <td>{{ customer["CustomerID"] }}</td>
+            <td>{{ customer["FirstName"] }}</td>
+            <td>{{ customer["MiddleName"] or "" }}</td>
+            <td>{{ customer["LastName"] }}</td>
+            <td>{{ customer["EmailAddress"] }}</td>
+            <td>{{ "True" if customer["IsBlackListed"] else "False" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Blacklist Actions -->
+<form method="POST" class="mt-4">
+    <div class="form-group">
+        <label for="addId"><strong>Enter Customer ID to add to blacklist:</strong></label>
+        <input type="number" class="form-control" name="addId" id="addId" placeholder="Customer ID">
+    </div>
+    <div class="form-group">
+        <label for="removeId"><strong>Enter Customer ID to remove from blacklist:</strong></label>
+        <input type="number" class="form-control" name="removeId" id="removeId" placeholder="Customer ID">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Changes</button>
+    <br>
+</form>
+
+{% endblock %}
