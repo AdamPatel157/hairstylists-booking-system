@@ -12,7 +12,9 @@
 
             {% if nav_context == "dashboard" %}
                 <a class="nav-item nav-link" href="/customer_dashboard">Dashboard</a>
-                <a class="nav-item nav-link" href="/select_services">Book Appointment</a>
+                {% if not isBlacklisted %}
+                    <a class="nav-item nav-link" href="/select_services">Book Appointment</a>
+                {% endif %}
                 <a class="nav-item nav-link" href="/view_appointments">My Appointments</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>
 
@@ -21,8 +23,10 @@
                 <a class="nav-item nav-link" href="/logout">Logout</a>
 
             {% elif nav_context == "view_appointments" %}
-                <a class="nav-item nav-link" href="/customer_dashboard">Return to Dashboard</a>
-                <a class="nav-item nav-link" href="/logout">Logout</a>
+                {% if not isBlacklisted %}
+                    <a class="nav-item nav-link" href="/customer_dashboard">Return to Customer Dashboard</a>
+                    <a class="nav-item nav-link" href="/logout">Logout</a>
+                {% endif %}
             {% elif nav_context == "select_barber" %}
                 <a class="nav-item nav-link" href="/select_services">Return to Select Services</a>
                 <a class="nav-item nav-link" href="/logout">Logout</a>

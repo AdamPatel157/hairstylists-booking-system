@@ -25,6 +25,7 @@ def customerDashboard():
     return render_template(
         "webpages/customer_facing/customer_dashboard.html",
         firstName = current_user.firstName,
+        isBlacklisted = bool(current_user.isBlacklisted),
         nav_context = "dashboard"
     )
 
@@ -36,7 +37,7 @@ def viewAppointments():
     customerID = current_user.getCustomerId()
     bookings = getUpcomingAppointments(customerID)
 
-    return render_template("webpages/customer_facing/view_appointments.html", appointments = bookings, nav_context = "dashboard")
+    return render_template("webpages/customer_facing/view_appointments.html", appointments = bookings, nav_context = "view_appointments")
 
 
 @views.route("/select_services", methods = ["GET", "POST"])

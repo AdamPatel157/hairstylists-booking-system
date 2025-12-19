@@ -15,14 +15,24 @@
         Welcome, Customer <span style="color: green;"><strong>{{ firstName }}</strong></span>!
     </p>
 
+    {% if isBlacklisted %}
+        <div class="alert alert-danger mb-5">
+            <strong>You have been blacklisted from using appointment booking services.</strong><br>
+            If you believe this was done in error, please contact
+            <strong>07773 326497</strong> by phone or text message.
+        </div>
+    {% endif %}
+
     <!-- Button container -->
     <div class="row justify-content-center">
 
+        {% if not isBlacklisted %}
         <div class="col-md-4 d-flex justify-content-center mb-4">
             <a href="/select_services" class="dashboard-button">
                 Book an Appointment
             </a>
         </div>
+        {% endif %}
 
         <div class="col-md-4 d-flex justify-content-center mb-4">
             <a href="/view_appointments" class="dashboard-button">
@@ -34,7 +44,6 @@
 
 </div>
 
-<!-- Button styling -->
 <style>
     .dashboard-button {
         display: flex;

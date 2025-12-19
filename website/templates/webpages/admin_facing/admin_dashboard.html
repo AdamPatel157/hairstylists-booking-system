@@ -32,6 +32,14 @@
 
 </div>
 
+<div class="row justify-content-center mt-4">
+    <div class="col-md-4 d-flex justify-content-center mb-4">
+        <a href="/barber_dashboard" class="blue-dashboard-button">
+            Go to Barber Dashboard
+        </a>
+    </div>
+</div>
+
 <style>
     .dashboard-button {
         display: flex;
@@ -57,6 +65,35 @@
 
     .dashboard-button:hover {
         background-color: #009b38;
+        color: white;
+        text-decoration: none;
+    }
+
+    /* NEW BLUE BUTTON */
+    .blue-dashboard-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        white-space: normal;
+        padding: 0 20px;
+
+        width: 100%;
+        height: 200px;
+
+        background-color: #0275d8; /* Bootstrap primary blue */
+        color: white;
+
+        font-size: 32px;
+        font-weight: 500;
+        text-decoration: none;
+
+        border-radius: 6px;
+        transition: 0.15s ease-in-out;
+    }
+
+    .blue-dashboard-button:hover {
+        background-color: #025aa5;
         color: white;
         text-decoration: none;
     }
