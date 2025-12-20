@@ -49,9 +49,7 @@ def initDb():
                        IsBlackListed
                        INTEGER
                        DEFAULT
-                       0,
-                       PhoneNumber
-                       TEXT
+                       0
                    )
                    """)
 
@@ -103,28 +101,21 @@ def initDb():
                        AUTOINCREMENT,
                        FirstName
                        TEXT
-                       NOT
-                       NULL,
+                       NOT NULL,
                        MiddleName
                        TEXT,
                        LastName
                        TEXT
-                       NOT
-                       NULL,
+                       NOT NULL,
                        EmailAddress
                        TEXT
-                       NOT
-                       NULL,
+                       NOT NULL,
                        HashedPassword
                        TEXT
-                       NOT
-                       NULL,
-                       PhoneNumber
-                       TEXT,
+                       NOT NULL,
                        VerificationCode
                        TEXT
-                       NOT
-                       NULL,
+                       NOT NULL,
                        IsPasswordReset
                        INTEGER
                        DEFAULT
@@ -513,15 +504,15 @@ def getTimeSlotsForWeek(weekCommencingStr: str):
         conn.close()
 
 
-def createCustomer(firstName, middleName, lastName, email, hashedPassword, phoneNumber):
+def createCustomer(firstName, middleName, lastName, email, hashedPassword):
     # Inserts a new customer record using parameterized query
     # The ? placeholders prevent SQL injection attacks
     conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("""
-                   INSERT INTO tblCustomer (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, IsBlackListed, PhoneNumber)
-                   VALUES (?, ?, ?, ?, ?, 0, ?)""",
-                   (firstName, middleName, lastName, email, hashedPassword, phoneNumber))
+                   INSERT INTO tblCustomer (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, IsBlackListed)
+                   VALUES (?, ?, ?, ?, ?, 0)""",
+                   (firstName, middleName, lastName, email, hashedPassword))
     conn.commit()
     customerId = cursor.lastrowid
     conn.close()
@@ -537,19 +528,6 @@ def getCustomerByEmail(email):
                        "FROM tblCustomer "
                        "WHERE EmailAddress = ?",
                        (email,))
-    customer = cursor.fetchone()
-    conn.close()
-    return customer
-
-
-def getCustomerByPhone(phoneNumber):
-    # Retrieves customer by phone number
-    conn = getDbConnection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * "
-                       "FROM tblCustomer "
-                       "WHERE PhoneNumber = ?",
-                       (phoneNumber,))
     customer = cursor.fetchone()
     conn.close()
     return customer
@@ -1225,15 +1203,15 @@ def convertDateTimeFormat(dateStr: str):
 
 # Unverified User SQL Statements
 
-def createUnverified(firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode,
+def createUnverified(firstName, middleName, lastName, email, hashedPassword, verificationCode,
                       isPasswordReset):
     # Creates temporary unverified record for email verification or password reset
     conn = getDbConnection()
     cursor = conn.cursor()
     cursor.execute("""
-                   INSERT INTO tblUnverified (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, PhoneNumber, VerificationCode, IsPasswordReset)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                   (firstName, middleName, lastName, email, hashedPassword, phoneNumber, verificationCode, isPasswordReset))
+                   INSERT INTO tblUnverified (FirstName, MiddleName, LastName, EmailAddress, HashedPassword, VerificationCode, IsPasswordReset)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   (firstName, middleName, lastName, email, hashedPassword, verificationCode, isPasswordReset))
     conn.commit()
     unverifiedId = cursor.lastrowid
     conn.close()

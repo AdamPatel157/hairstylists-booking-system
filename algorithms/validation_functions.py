@@ -86,25 +86,6 @@ def validateEmail(emailAddress):
         return True
 
 
-def validatePhoneNumber(phoneNum):
-    if phoneNum == "":  # Allows empty phone number fields as it is optional
-        return True
-    else:
-        # Uses Regular Expressions to ensure phone numbers are exactly 11 digits and start with 0
-        phonePattern = r'^0\d{10}$'
-        if not re.match(phonePattern, phoneNum):
-            if not phoneNum.isdigit():
-                flash("Phone Numbers can only contain digits 0-9.", category = "Error")
-            elif len(phoneNum) != 11:
-                flash("Phone Numbers must be exactly 11 characters long.", category = "Error")
-            elif phoneNum[0] != '0':
-                flash("Phone Numbers must begin with the number '0'.", category = "Error")
-            else:
-                flash("Please enter a valid phone number.", category = "Error")
-            return False
-        else:
-            return True
-
 def validatePassword(createPassword, confirmPassword):
     passwordPunctuation = ['?', '!', '£', '%', '^', '&', '*', '(', ')', '/', '#']
     lowercaseEnglishAlphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']

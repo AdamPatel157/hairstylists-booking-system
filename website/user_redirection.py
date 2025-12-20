@@ -7,13 +7,13 @@ from flask import Blueprint, render_template, request, flash, redirect, session
 # session library allows data to be stored temporarily in cookies.
 
 from website.database_management import (getCustomerByEmail, getBarberByEmail, createCustomer,
-    getCustomerByPhone, createUnverified, getUnverifiedById,
+    createUnverified, getUnverifiedById,
     deleteUnverified, updateCustomerPassword, updateBarberPassword, cleanupExpiredUnverified)
 
 from algorithms.hash_password import hashPassword
 from algorithms.email_communication import generateOtp, sendVerificationEmail
 from algorithms.user_classes import Customer, Barber
-from algorithms.validation_functions import validateName, validateEmail, validatePhoneNumber, validatePassword
+from algorithms.validation_functions import validateName, validateEmail, validatePassword
 
 from flask_login import login_user, logout_user, login_required
 
@@ -42,8 +42,7 @@ def login():
                     lastName = customerData["LastName"],
                     email = customerData["EmailAddress"],
                     hashedPassword = customerData["HashedPassword"],
-                    isBlacklisted = customerData["IsBlackListed"],
-                    phoneNumber = customerData["PhoneNumber"]
+                    isBlacklisted = customerData["IsBlackListed"]
                 )
                 login_user(customer, remember = True)
                 return redirect("/customer_dashboard")
@@ -83,7 +82,6 @@ def register():
     middleName = ""
     lastName = ""
     email = ""
-    phoneNumber = ""
     password1 = ""
     password2 = ""
 
@@ -93,21 +91,14 @@ def register():
         middleName = request.form.get("middleName").strip()
         lastName = request.form.get("lastName").strip()
         email = request.form.get("email").strip()
-        phoneNumber = request.form.get("phoneNumber").strip()
         password1 = request.form.get("password1")
         password2 = request.form.get("password2")
 
         # Ensures that no account already exists with the same email address
         customer = getCustomerByEmail(email)
-        customerWithPhone = getCustomerByPhone(phoneNumber)
 
         if customer:
             flash("An account has already been created with this email address. Please login, or try again.", category="Error")
-            error = True
-
-        # Ensures that no account already exists with the same phone number, but allows empty fields
-        elif customerWithPhone and phoneNumber != "":
-            flash("An account has already been created with this phone number. Please try again with a different number." ,category="Error")
             error = True
 
         else:
@@ -117,11 +108,10 @@ def register():
             middleNameIsValidated = validateName(middleName, "Middle")
             lastNameIsValidated = validateName(lastName, "Last")
             emailIsValidated = validateEmail(email)
-            phoneNumberIsValidated = validatePhoneNumber(phoneNumber)
             passwordIsValidated = validatePassword(password1, password2)
 
             # If all validation check procedures are true, stores inputs in tblUnverified in database
-            if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and phoneNumberIsValidated and passwordIsValidated:
+            if firstNameIsValidated and middleNameIsValidated and lastNameIsValidated and emailIsValidated and passwordIsValidated:
                 # Hashes password before storing
                 hashedPassword = hashPassword(password1)
 
@@ -130,7 +120,7 @@ def register():
 
                 unverifiedId = createUnverified(
                     firstName, middleName, lastName, email,
-                    hashedPassword, phoneNumber, verificationCode, 0
+                    hashedPassword, verificationCode, 0
                 )
 
                 # Stores only the unverified ID in cookie so that database records from that ID can be retrieved
@@ -140,7 +130,7 @@ def register():
             else:
                 error = True
     if error:
-        return render_template("webpages/user_management/register.html", firstName=firstName, middleName=middleName, lastName=lastName, email=email, phoneNumber=phoneNumber, password1=password1, password2=password2)
+        return render_template("webpages/user_management/register.html", firstName = firstName, middleName = middleName, lastName = lastName, email = email, password1 = password1, password2 = password2)
     else:
         return render_template("webpages/user_management/register.html")
 
@@ -182,7 +172,6 @@ def verifyEmail():
                 unverifiedRecord["LastName"],
                 unverifiedRecord["EmailAddress"],
                 unverifiedRecord["HashedPassword"],
-                unverifiedRecord["PhoneNumber"]
             )
 
             # Deletes unverified record
@@ -235,7 +224,6 @@ def forgotPassword():
                 customerData['LastName'],
                 customerData['EmailAddress'],
                 customerData['HashedPassword'],
-                customerData['PhoneNumber'],
                 otpCode,
                 1  # Signals that isPasswordReset = True
             )

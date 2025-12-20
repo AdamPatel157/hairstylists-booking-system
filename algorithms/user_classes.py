@@ -14,12 +14,11 @@ class User(UserMixin):
 
 
 class Customer(User):
-    def __init__(self, customerId, firstName, middleName, lastName, email, hashedPassword, isBlacklisted, phoneNumber):
+    def __init__(self, customerId, firstName, middleName, lastName, email, hashedPassword, isBlacklisted):
         super().__init__(firstName, lastName, email, hashedPassword)
         self.customerId = customerId
         self.middleName = middleName
         self.isBlacklisted = isBlacklisted
-        self.phoneNumber = phoneNumber
 
     def get_id(self):
         # For Flask Login Recognition only
