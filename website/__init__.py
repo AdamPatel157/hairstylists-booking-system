@@ -47,7 +47,6 @@ def createApp():
                     email = customerData['EmailAddress'],
                     hashedPassword = customerData['HashedPassword'],
                     isBlacklisted = customerData['IsBlackListed'],
-                    phoneNumber = customerData['PhoneNumber']
                 )
         elif userId.startswith("barber_"):
             barberId = int(userId.split("_")[1])
