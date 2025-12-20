@@ -4,8 +4,9 @@ from flask_login import login_required, current_user
 from algorithms.email_communication import sendCancellationEmail
 from algorithms.user_classes import Barber
 from algorithms.appointment_classes import TimeSlot
+from website.booking_queue_instance import bookingQueue
 from website.database_management import getWeeklyRevenueSummary, getMonthlyRevenueSummary, getRevenueByBarber, customerExists, getBlacklistedCustomers, getAllCustomers, addCustomerToBlacklist, removeCustomerFromBlacklist, setSlotAvailability, getBookedSlotIdsForWeek, ensureCurrentWeekSlots, getTimeSlotsForWeek, getAllBarbers, getBarberById, getRevenueDataForWeek, getScheduleForWeek, getCustomerEmailByBookingRef, cancelAppointmentByBookingRef, getWeekCommencingStrings
-from .user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
+from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
 
 barberRedirection = Blueprint("barberRedirection", __name__)
 
@@ -248,13 +249,26 @@ def blockTimeSlots():
         for slot in slotObjects:
             slot.setSelected(slot.getSlotId() in selectedSlotIds)
 
-        # Toggles availability based on selection
         for slot in slotObjects:
             if slot.isSelected():
-                if slot.isAvailable():
-                    setSlotAvailability(slot.getSlotId(), False)
-                else:
-                    setSlotAvailability(slot.getSlotId(), True)
+                action = "block" if slot.isAvailable() else "unblock"
+
+                queueRequest = {
+                    "type": "BlockSlots",
+                    "payload": {
+                        "slotIds": [slot.getSlotId()],
+                        "action": action
+                    }
+                }
+
+                bookingQueue.enqueue(queueRequest)
+                success = bookingQueue.processNext()
+
+                if not success:
+                    flash(
+                        "Some slots could not be updated because they have just been booked. Please review new availability and try again.",
+                        "Error")
+                    return redirect("/block_time_slots")
 
         flash("Your slot availability has been updated.", "Success")
         return redirect("/block_time_slots")

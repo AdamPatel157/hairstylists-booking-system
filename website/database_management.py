@@ -463,8 +463,8 @@ def getUpcomingAppointments(customerID: int):
 
         return list(appointments.values())
 
-    except sqlite3.Error as error:
-        print("Database error:", error)
+    except:
+        print("Database error")
         return []
 
     finally:
@@ -671,8 +671,8 @@ def checkIfSlotsExist(weekCommencingStr: str):
             (weekCommencingStr,)
         ).fetchone()
         return result["cnt"] > 0
-    except Exception as e:
-        print("Database error in checkIfSlotsExist:", e)
+    except:
+        print("Database error")
         return False
     finally:
         conn.close()
@@ -682,7 +682,7 @@ def ensureCurrentWeekSlots():
     weekCommencingStr, _ = getWeekCommencingStrings()
 
     if checkIfSlotsExist(weekCommencingStr):
-        return  # slots already seeded
+        return
 
     conn = getDbConnection()
     cursor = conn.cursor()
@@ -796,9 +796,6 @@ def getAllBarbers():
             "YearsOfExperience": row[3]
         })
 
-    for row in rows:
-        print(row)
-
     return barbers
 
 
@@ -816,10 +813,6 @@ def updateBarberPassword(email, newHashedPassword):
 def getRevenueDataForWeek(barberID: int, weekCommencing: str):
     conn = getDbConnection()
     cursor = conn.cursor()
-    print("WEEK COMMENCING VALUES:")
-    cursor.execute("SELECT DISTINCT WeekCommencing FROM tblTimeSlot")
-    for row in cursor.fetchall():
-        print(row[0])
     try:
         rows = cursor.execute("""
             SELECT
@@ -1004,6 +997,21 @@ def getBlacklistedCustomers():
         return rows
     finally:
         conn.close()
+
+
+def isSlotBooked(slotId):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 1
+        FROM tblAppointmentSlots
+        WHERE SlotID = ?
+        LIMIT 1
+    """, (slotId,))
+    if cursor.fetchone() is not None:
+        return True
+    else:
+        return False
 
 
 def customerExists(customerId: int):

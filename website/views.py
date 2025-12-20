@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 
 from website.database_management import getBookedSlotIdsForWeek, getDbConnection, getUpcomingAppointments, fetchServices, getSelectedServicesFromIds, getAllBarbers, generateWeeklySlots, getAllTimeSlots, ensureCurrentWeekSlots, getBarberById, getWeekCommencingStrings, getTimeSlotsForWeek
 from website.user_friendly_names import userFriendlyServiceNames, userFriendlyCategoryNames
+from website.booking_queue_instance import bookingQueue
 from algorithms.appointment_classes import Appointment, TimeSlot
 from algorithms.email_communication import sendBookingConfirmationEmail
 from algorithms.validation_functions import validateSlots, isSlotInPast
@@ -415,8 +416,20 @@ def confirmBooking():
     allSlots = getAllTimeSlots()
     slotDetails = [row for row in allSlots if row["SlotID"] in slotIds]
 
-    # Sorts slots by start time
+    # CHECK UP ON THIS SORTING THING --------
+    #
+    #
+    #
+    #
+    #
+    #
     slotDetails.sort(key = lambda s: s["StartTime"])
+    #
+    #
+    #
+    #
+    #
+
 
     weekCommencing = slotDetails[0]["WeekCommencing"]
     selectedDay = slotDetails[0]["Day"]
@@ -432,20 +445,27 @@ def confirmBooking():
         action = request.form.get("action")
 
         if action == "confirm":
-
             appointment.setDate(selectedDate)
-            appointment = activeAppointments.get(current_user.customerId)
 
-            conn = getDbConnection()
+            queueRequest = {
+                "type": "Booking",
+                "payload": {
+                    "appointment": appointment
+                }
+            }
 
-            if appointment.addBookingToDatabase(conn):
+            bookingQueue.enqueue(queueRequest)
+
+            # Attempts to process
+            success = bookingQueue.processNext()
+
+            if success:
                 sendBookingConfirmationEmail(appointment.getBookingReference())
                 flash("Booking confirmed successfully.", "Success")
                 return redirect(f"/booking_confirmed?ref={appointment.getBookingReference()}")
-
             else:
-                flash("There was a problem confirming your booking.", "Error")
-                return redirect("/confirm_booking")
+                flash("The time slots you have selected have become unavailable before you could confirm them. Please choose different slots and try again.", "Error")
+                return redirect("/select_time_slot")
 
     return render_template(
         "webpages/customer_facing/confirm_booking.html",
