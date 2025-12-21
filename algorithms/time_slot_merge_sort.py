@@ -25,7 +25,7 @@ def timeSlotMergeSort(slotList):
     rightPointer = 0
 
     while leftPointer < len(sortedLeft) and rightPointer < len(sortedRight):
-        # Convert start times into minutes for comparison
+        # Converts start times into minutes for comparison
         leftStartTime = toMinutes(sortedLeft[leftPointer].getStartTime())
         rightStartTime = toMinutes(sortedRight[rightPointer].getStartTime())
 
@@ -36,14 +36,33 @@ def timeSlotMergeSort(slotList):
             mergedList.append(sortedRight[rightPointer])
             rightPointer = rightPointer + 1
 
-    # Add any remaining slots from the left half
     while leftPointer < len(sortedLeft):
         mergedList.append(sortedLeft[leftPointer])
         leftPointer = leftPointer + 1
 
-    # Add any remaining slots from the right half
     while rightPointer < len(sortedRight):
         mergedList.append(sortedRight[rightPointer])
         rightPointer = rightPointer + 1
 
     return mergedList
+
+if __name__ == "__main__":
+    class DummySlot:
+        def __init__(self, startTime):
+            self.startTime = startTime
+
+        def getStartTime(self):
+            return self.startTime
+
+    inputList = []
+    done = False
+    while not done:
+        addToList = input("Enter a time: ")
+        if addToList == "done":
+            done = True
+        else:
+            inputList.append(DummySlot(addToList))
+
+    print([slot.getStartTime() for slot in inputList])
+    sortedList = timeSlotMergeSort(inputList)
+    print([slot.getStartTime() for slot in sortedList])

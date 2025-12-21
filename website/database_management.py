@@ -745,7 +745,11 @@ def generateWeeklySlots():
 def getAllTimeSlots():
     conn = getDbConnection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tblTimeSlot")
+    cursor.execute("""
+        SELECT *
+        FROM tblTimeSlot
+        ORDER BY WeekCommencing, Day, StartTime
+    """)
     rows = cursor.fetchall()
     conn.close()
     return rows

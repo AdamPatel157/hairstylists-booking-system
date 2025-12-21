@@ -26,7 +26,7 @@ def validateSlots(slotIds, idToSlot):
 
     slots = timeSlotMergeSort(slots)
 
-    # Checks that each consecutive slot starts exactly 20 minutes after the previous one
+    # Checks that each selected slot starts exactly 20 minutes after the previous one
     for index in range(1, len(slots)):
         currentSlotStart = toMinutes(slots[index].getStartTime())
         previousSlotStart = toMinutes(slots[index - 1].getStartTime())

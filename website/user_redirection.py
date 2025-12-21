@@ -184,14 +184,14 @@ def verifyEmail():
             flash("Account Successfully Created.", category = "Success")
             return redirect("/login")
         else:
-            flash("Incorrect Verification Code. Please try again or return to 'Create Account'.", category="Error")
+            flash("Incorrect Verification Code. Please try again or return to 'Create Account'.", category = "Error")
 
     elif request.method == "GET":
         # Sends verification email on first visit
         try:
             emailSent = sendVerificationEmail(email, verificationCode)
             if not emailSent:
-                flash("Something went wrong in sending a verification email. Please try again.", category="Error")
+                flash("Something went wrong in sending a verification email. Please try again.", category = "Error")
                 deleteUnverified(unverifiedId)
                 session.pop("unverifiedID", None)
                 return redirect("/register")
@@ -278,19 +278,19 @@ def verifyPasswordReset():
         storedOtp = unverifiedRecord["VerificationCode"]
 
         if getOtp == storedOtp:
-            flash("Email verified. Please set your new password.", category="Success")
+            flash("Email verified. Please set your new password.", category = "Success")
             return redirect("/set_new_password")
         else:
-            flash("Incorrect verification code. Please try again.", category="Error")
+            flash("Incorrect verification code. Please try again.", category = "Error")
 
-    return render_template("webpages/user_management/verify.html", is_password_reset=True)
+    return render_template("webpages/user_management/verify.html", is_password_reset = True)
 
 
 @userRedirection.route("/set_new_password", methods = ["GET", "POST"])
 def setNewPassword():
     # Checks if user has completed OTP verification
     if "unverifiedID" not in session:
-        flash("Please complete the password reset process from the beginning.", category="Error")
+        flash("Please complete the password reset process from the beginning.", category = "Error")
         return redirect("/login")
 
     # Retrieves unverified record
@@ -298,7 +298,7 @@ def setNewPassword():
     unverifiedRecord = getUnverifiedById(unverifiedId, isPasswordReset = 1)
 
     if not unverifiedRecord:
-        flash("Password reset session expired or invalid. Please try again.", category="Error")
+        flash("Password reset session expired or invalid. Please try again.", category = "Error")
         session.pop("unverifiedID", None)
         return redirect("/login")
 
@@ -329,7 +329,7 @@ def setNewPassword():
             # Clears the cookie storing the unverifiedID from the session
             session.pop("unverifiedID", None)
 
-            flash("Password reset successful! Please login with your new password.", category="Success")
+            flash("Password reset successful! Please login with your new password.", category = "Success")
             return redirect("/login")
 
     return render_template("webpages/user_management/forgot_password.html")

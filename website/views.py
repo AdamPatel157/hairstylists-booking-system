@@ -416,21 +416,6 @@ def confirmBooking():
     allSlots = getAllTimeSlots()
     slotDetails = [row for row in allSlots if row["SlotID"] in slotIds]
 
-    # CHECK UP ON THIS SORTING THING --------
-    #
-    #
-    #
-    #
-    #
-    #
-    slotDetails.sort(key = lambda s: s["StartTime"])
-    #
-    #
-    #
-    #
-    #
-
-
     weekCommencing = slotDetails[0]["WeekCommencing"]
     selectedDay = slotDetails[0]["Day"]
     selectedDate = getActualDate(weekCommencing, selectedDay)
@@ -456,7 +441,7 @@ def confirmBooking():
 
             bookingQueue.enqueue(queueRequest)
 
-            # Attempts to process
+            # Attempts to process next item in queue
             success = bookingQueue.processNext()
 
             if success:
