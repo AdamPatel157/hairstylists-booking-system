@@ -365,12 +365,8 @@ def getBookingDetails(bookingReference: int):
             "noteForBarber": appointmentRow["NoteForBarber"]
         }
 
-    except sqlite3.Error as error:
-        print("Database error occurred:", error)
-        return None
-
     except:
-        print("An unexpected error occurred.")
+        print("Database error occurred:")
         return None
 
     finally:
