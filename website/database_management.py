@@ -1056,57 +1056,74 @@ def removeCustomerFromBlacklist(customerId: int):
 
 
 def getWeeklyRevenueSummary(startDate: str, endDate: str):
-
-    startIso = datetime.strptime(startDate, "%Y-%m-%d").strftime("%Y-%m-%d")
-    endIso = datetime.strptime(endDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+    # Converts input dates into YYYY-MM-DD format
+    startDateFormatted = datetime.strptime(startDate, "%Y-%m-%d").strftime("%Y-%m-%d")
+    endDateFormatted = datetime.strptime(endDate, "%Y-%m-%d").strftime("%Y-%m-%d")
 
     conn = getDbConnection()
     cursor = conn.cursor()
 
     try:
-        allRows = cursor.execute("""
+        appointmentRows = cursor.execute("""
             SELECT BookingReference, Date
             FROM tblAppointment
         """).fetchall()
 
-        validBookingRefs = []
-        for row in allRows:
+        bookingRefsInRange = []
+        for row in appointmentRows:
             bookingRef = row["BookingReference"]
             storedDate = row["Date"]
 
-            isoDate = convertDateTimeFormat(storedDate)
+            appointmentDate = convertDateTimeFormat(storedDate)
 
-            if startIso <= isoDate <= endIso:
-                validBookingRefs.append(bookingRef)
+            if startDateFormatted <= appointmentDate <= endDateFormatted:
+                bookingRefsInRange.append(bookingRef)
 
-        if not validBookingRefs:
+        if not bookingRefsInRange:
             return []
 
-        placeholders = ",".join("?" for _ in validBookingRefs)
+        placeholders = ",".join("?" for _ in bookingRefsInRange)
 
-        rows = cursor.execute(f"""
+        weeklyRevenueRows = cursor.execute(f"""
+            WITH AppointmentRevenue AS (
+                SELECT 
+                    tblAppointmentServices.BookingReference,
+                    SUM(tblService.Price) AS TotalPrice
+                FROM tblAppointmentServices
+                JOIN tblService 
+                    ON tblAppointmentServices.ServiceID = tblService.ServiceID
+                GROUP BY tblAppointmentServices.BookingReference
+            ),
+            AppointmentWeek AS (
+                SELECT 
+                    tblAppointment.BookingReference,
+                    tblTimeSlot.WeekCommencing
+                FROM tblAppointment
+                JOIN tblAppointmentSlots 
+                    ON tblAppointment.BookingReference = tblAppointmentSlots.BookingReference
+                JOIN tblTimeSlot 
+                    ON tblAppointmentSlots.SlotID = tblTimeSlot.SlotID
+                GROUP BY 
+                    tblAppointment.BookingReference,
+                    tblTimeSlot.WeekCommencing
+            )
             SELECT 
-                tblTimeSlot.WeekCommencing,
-                COUNT(DISTINCT tblAppointment.BookingReference) AS AppointmentCount,
-                SUM(tblService.Price) AS TotalRevenue
-            FROM tblAppointment
-            JOIN tblAppointmentServices 
-                ON tblAppointment.BookingReference = tblAppointmentServices.BookingReference
-            JOIN tblService 
-                ON tblAppointmentServices.ServiceID = tblService.ServiceID
-            JOIN tblAppointmentSlots 
-                ON tblAppointment.BookingReference = tblAppointmentSlots.BookingReference
-            JOIN tblTimeSlot 
-                ON tblAppointmentSlots.SlotID = tblTimeSlot.SlotID
-            WHERE tblAppointment.BookingReference IN ({placeholders})
-            GROUP BY tblTimeSlot.WeekCommencing
-            ORDER BY tblTimeSlot.WeekCommencing
-        """, validBookingRefs).fetchall()
+                AppointmentWeek.WeekCommencing,
+                COUNT(*) AS AppointmentCount,
+                SUM(AppointmentRevenue.TotalPrice) AS TotalRevenue
+            FROM AppointmentWeek
+            JOIN AppointmentRevenue 
+                ON AppointmentWeek.BookingReference = AppointmentRevenue.BookingReference
+            WHERE AppointmentWeek.BookingReference IN ({placeholders})
+            GROUP BY AppointmentWeek.WeekCommencing
+            ORDER BY AppointmentWeek.WeekCommencing
+        """, bookingRefsInRange).fetchall()
 
-        return rows
+        return weeklyRevenueRows
 
     finally:
         conn.close()
+
 
 
 def getRevenueByBarber(startDate: str, endDate: str):
