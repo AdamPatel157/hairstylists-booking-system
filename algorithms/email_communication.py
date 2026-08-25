@@ -23,8 +23,9 @@ def sendVerificationEmail(receiverEmail: str, otpCode: str):
     subject = "Your Email Verification Code"
     body = "Your verification code is: " + otpCode
 
-    senderEmail = "ganihairbookings@gmail.com"
-    emailPassword = "ykyj bzqn jgos jhmd" # Google App Password created for email account
+    # Email credentials removed from public repository for security.
+    senderEmail = "YOUR_EMAIL_ADDRESS"
+    emailPassword = "YOUR_APP_PASSWORD"
 
     message = MIMEMultipart()
     message["From"] = senderEmail
@@ -81,8 +82,9 @@ def sendBookingConfirmationEmail(bookingReference: int):
         f"If you need to cancel or have any issues, please contact 07773 326497 by phone or SMS.\n"
     )
 
-    senderEmail = "ganihairbookings@gmail.com"
-    emailPassword = "ykyj bzqn jgos jhmd"  # Google App Password created for email account
+    # Email credentials removed from public repository for security.
+    senderEmail = "YOUR_EMAIL_ADDRESS"
+    emailPassword = "YOUR_APP_PASSWORD"
 
     message = MIMEMultipart()
     message["From"] = senderEmail
@@ -116,8 +118,9 @@ def sendCancellationEmail(receiverEmail: str, bookingReference: int, cancelReaso
         f"If you have any queries, please contact 07773 326497.\n\n"
     )
 
-    senderEmail = "ganihairbookings@gmail.com"
-    emailPassword = "ykyj bzqn jgos jhmd"
+    # Email credentials removed from public repository for security.
+    senderEmail = "YOUR_EMAIL_ADDRESS"
+    emailPassword = "YOUR_APP_PASSWORD"
 
     message = MIMEMultipart()
     message["From"] = senderEmail
